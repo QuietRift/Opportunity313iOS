@@ -27,12 +27,6 @@ struct AddChildView: View {
 
     @State private var accessibilityText = ""
 
-    private let ageBands = [
-        "8–10",
-        "11–13",
-        "14–18"
-    ]
-
     private let relationships = [
         "Parent",
         "Guardian",
@@ -84,21 +78,20 @@ struct AddChildView: View {
                             .tag("")
 
                         ForEach(
-                            ageBands,
-                            id: \.self
-                        ) { band in
+                            AgeGroup.child
+                        ) { group in
 
-                            Text(band)
-                                .tag(band)
+                            Text("\(group.databaseValue) · \(group.title)")
+                                .tag(group.databaseValue)
                         }
                     }
 
                     Picker(
-                        "Grade",
+                        "Grade (Optional)",
                         selection: $grade
                     ) {
 
-                        Text("Select grade")
+                        Text("Not applicable")
                             .tag(nil as Int?)
 
                         Text("Kindergarten")
@@ -324,7 +317,5 @@ struct AddChildView: View {
             .isEmpty
         &&
         !ageBand.isEmpty
-        &&
-        grade != nil
     }
 }

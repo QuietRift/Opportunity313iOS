@@ -76,7 +76,7 @@ struct HomeView: View {
     }
 
     private var featured: [Opportunity] {
-        Array((recommendedOpportunities.isEmpty ? opportunityService.opportunities : recommendedOpportunities).prefix(4))
+        Array((recommendedOpportunities.isEmpty ? eligibleOpportunities : recommendedOpportunities).prefix(4))
     }
 
     @ViewBuilder private var featuredSection: some View {
@@ -179,10 +179,14 @@ struct HomeView: View {
     }
 
     private var recommendedOpportunities: [Opportunity] {
-        opportunityService.opportunities.filter { $0.matchesRecommendation(for: profileService.currentProfile) }
+        eligibleOpportunities.filter { $0.matchesRecommendation(for: profileService.currentProfile) }
+    }
+    private var eligibleOpportunities: [Opportunity] {
+        guard let profile = profileService.currentProfile else { return [] }
+        return opportunityService.opportunities.filter { $0.matchesEligibility(for: profile) }
     }
     private var upcomingDeadlines: [Opportunity] {
-        opportunityService.opportunities.filter { ($0.deadline ?? .distantPast) > Date() }
+        eligibleOpportunities.filter { ($0.deadline ?? .distantPast) > Date() }
             .sorted { ($0.deadline ?? .distantFuture) < ($1.deadline ?? .distantFuture) }
     }
 }

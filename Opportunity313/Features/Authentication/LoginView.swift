@@ -14,6 +14,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var showSignUp = false
+    @State private var showChildAccess = false
 
     var body: some View {
         NavigationStack {
@@ -81,12 +82,21 @@ struct LoginView: View {
                     showSignUp = true
                 }
 
+                Button {
+                    showChildAccess = true
+                } label: {
+                    Label("I'm under 18 — use a parent code", systemImage: "person.badge.key.fill")
+                }
+
                 Spacer()
             }
             .padding()
             .sheet(isPresented: $showSignUp) {
                 SignUpView()
                     .environmentObject(authService)
+            }
+            .sheet(isPresented: $showChildAccess) {
+                ChildAccessLoginView().environmentObject(authService)
             }
         }
     }

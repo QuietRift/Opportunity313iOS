@@ -26,12 +26,6 @@ struct EditYouthProfileView: View {
 
     @State private var accessibilityText: String
 
-    private let ageBands = [
-        "8–10",
-        "11–13",
-        "14–18"
-    ]
-
     private let interests = [
         "Academic Support",
         "Arts",
@@ -120,20 +114,27 @@ struct EditYouthProfileView: View {
                         selection: $ageBand
                     ) {
 
-                        ForEach(
-                            ageBands,
-                            id: \.self
-                        ) { band in
+                        if !AgeGroup.supported.contains(where: { $0.databaseValue == ageBand }) {
+                            Text("Current: \(ageBand)")
+                                .tag(ageBand)
+                        }
 
-                            Text(band)
-                                .tag(band)
+                        ForEach(
+                            AgeGroup.supported
+                        ) { group in
+
+                            Text("\(group.databaseValue) · \(group.title)")
+                                .tag(group.databaseValue)
                         }
                     }
 
                     Picker(
-                        "Grade",
+                        "Grade (Optional)",
                         selection: $grade
                     ) {
+
+                        Text("Not applicable")
+                            .tag(nil as Int?)
 
                         Text("Kindergarten")
                             .tag(0 as Int?)
@@ -341,7 +342,5 @@ struct EditYouthProfileView: View {
             .isEmpty
         &&
         !ageBand.isEmpty
-        &&
-        grade != nil
     }
 }

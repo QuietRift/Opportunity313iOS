@@ -103,12 +103,22 @@ struct Opportunity: Codable, Identifiable, Hashable {
 
 
 extension Opportunity {
+    func matchesEligibility(for profile: YouthProfile) -> Bool {
+        if let ageGroup = AgeGroup.matching(profile.ageBand),
+           !ageGroup.overlaps(minimum: ageMin, maximum: ageMax) {
+            return false
+        }
+
+        guard let grade = profile.grade else { return true }
+        return (gradeMin == nil || grade >= gradeMin!) &&
+            (gradeMax == nil || grade <= gradeMax!)
+    }
+
     func matchesRecommendation(for profile: YouthProfile?) -> Bool {
         guard let profile, profile.interests.contains(where: {
             $0.localizedCaseInsensitiveCompare(category) == .orderedSame
         }) else { return false }
-        guard let grade = profile.grade else { return true }
-        return (gradeMin == nil || grade >= gradeMin!) &&
-            (gradeMax == nil || grade <= gradeMax!)
+
+        return matchesEligibility(for: profile)
     }
 }

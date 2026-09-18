@@ -20,12 +20,6 @@ struct YouthSetupView: View {
 
     @State private var selectedInterests: Set<String> = []
 
-    private let ageBands = [
-        "8–10",
-        "11–13",
-        "14–18"
-    ]
-
     private let interests = [
         "Academic Support",
         "Arts",
@@ -120,16 +114,16 @@ struct YouthSetupView: View {
                 Text("Select age group")
                     .tag("")
 
-                ForEach(ageBands, id: \.self) { band in
-                    Text(band)
-                        .tag(band)
+                ForEach(AgeGroup.independentlyManaged) { group in
+                    Text("\(group.databaseValue) · \(group.title)")
+                        .tag(group.databaseValue)
                 }
             }
             .pickerStyle(.menu)
 
-            Picker("Grade", selection: $grade) {
+            Picker("Grade (Optional)", selection: $grade) {
 
-                Text("Select grade")
+                Text("Not applicable")
                     .tag(nil as Int?)
 
                 Text("Kindergarten")
@@ -275,8 +269,6 @@ struct YouthSetupView: View {
             .isEmpty
         &&
         !ageBand.isEmpty
-        &&
-        grade != nil
     }
 }
 

@@ -14,6 +14,8 @@ struct ParentChildDetailView: View {
     @StateObject private var opportunityService =
         OpportunityService()
 
+    @StateObject private var childAccessService = ChildAccessService()
+
     @EnvironmentObject var familySaveService:
         FamilySaveService
 
@@ -100,6 +102,42 @@ struct ParentChildDetailView: View {
                         cornerRadius: 18
                     )
                 )
+
+                VStack(alignment: .leading, spacing: 14) {
+                    Text("Child Access").font(.title2.bold())
+                    Text("Create a private sign-in code so \(child.firstName) can use this profile without creating an independent account.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+
+                    if let code = childAccessService.generatedCode {
+                        Text(code)
+                            .font(.system(.title3, design: .monospaced).bold())
+                            .textSelection(.enabled)
+                            .padding()
+                            .frame(maxWidth: .infinity)
+                            .background(Color.orange.opacity(0.10), in: RoundedRectangle(cornerRadius: 14))
+                        Text("Save this code now. For security, it will not be shown again after leaving this screen.")
+                            .font(.caption).foregroundStyle(.secondary)
+                    }
+
+                    HStack {
+                        Button(childAccessService.generatedCode == nil ? "Create Access Code" : "Replace Code") {
+                            Task { await childAccessService.generate(for: child.id) }
+                        }
+                        .buttonStyle(.borderedProminent)
+
+                        Button("Revoke", role: .destructive) {
+                            Task { await childAccessService.revoke(for: child.id) }
+                        }
+                        .buttonStyle(.bordered)
+                    }
+                    .disabled(childAccessService.isLoading)
+
+                    if let error = childAccessService.errorMessage {
+                        Text(error).font(.caption).foregroundStyle(.red)
+                    }
+                }
+                .padding()
+                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
 
 
                 // MARK: - Interests

@@ -36,7 +36,7 @@ struct OpportunityFilterView: View {
                         Text("Any Age")
                             .tag(nil as Int?)
 
-                        ForEach(5...24, id: \.self) { age in
+                        ForEach(2...24, id: \.self) { age in
                             Text("\(age)")
                                 .tag(age as Int?)
                         }

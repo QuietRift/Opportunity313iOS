@@ -39,14 +39,25 @@ struct RoleSelectionView: View {
                     VStack(spacing: 14) {
 
                         RoleCard(
-                            title: "I'm a Young Person",
+                            title: "I'm a Young Adult (18–24)",
                             description:
-                                "Discover programs, events, careers, sports and opportunities.",
+                                "Create your own profile and discover age-appropriate opportunities.",
                             icon: "figure.and.child.holdinghands",
                             selected: selectedRole == "youth"
                         ) {
                             selectedRole = "youth"
                         }
+
+                        VStack(alignment: .leading, spacing: 6) {
+                            Label("Under 18?", systemImage: "person.badge.key.fill")
+                                .font(.headline)
+                            Text("A parent or guardian creates your profile. Use the access code they give you to sign in.")
+                                .font(.subheadline)
+                                .foregroundStyle(.secondary)
+                        }
+                        .frame(maxWidth: .infinity, alignment: .leading)
+                        .padding()
+                        .background(Color.orange.opacity(0.08), in: RoundedRectangle(cornerRadius: 18))
 
                         RoleCard(
                             title: "I'm a Parent or Guardian",

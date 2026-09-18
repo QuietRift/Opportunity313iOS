@@ -82,6 +82,25 @@ final class AuthService: ObservableObject {
         }
     }
 
+    func signInWithChildAccessCode(_ code: String) async {
+        struct Request: Encodable { let action = "redeem"; let code: String }
+        struct Credentials: Decodable { let email: String; let password: String }
+
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        do {
+            let credentials: Credentials = try await supabase.functions.invoke(
+                "child-access",
+                options: FunctionInvokeOptions(body: Request(code: code))
+            )
+            try await supabase.auth.signIn(email: credentials.email, password: credentials.password)
+        } catch {
+            errorMessage = "That access code is invalid, expired, or temporarily unavailable."
+        }
+    }
+
 
     // MARK: - Sign Up
 

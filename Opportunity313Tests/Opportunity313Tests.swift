@@ -3,6 +3,24 @@ import Testing
 @testable import Opportunity313
 
 struct Opportunity313Tests {
+    @Test func supportedAgeGroupsCoverEarlyChildhoodThroughYoungAdults() {
+        #expect(AgeGroup.supported.first?.minimumAge == 2)
+        #expect(AgeGroup.supported.last?.maximumAge == 24)
+        #expect(AgeGroup.supported.contains { $0.databaseValue == "18–24" })
+        #expect(AgeGroup.child.allSatisfy { $0.maximumAge <= 18 })
+        #expect(AgeGroup.independentlyManaged.allSatisfy { $0.minimumAge >= 18 })
+    }
+
+    @Test func ageGroupsMatchEligibilityAndLegacyProfileValues() throws {
+        let earlyLearner = try #require(AgeGroup.matching("2–5"))
+        #expect(earlyLearner.overlaps(minimum: 4, maximum: 8))
+        #expect(!earlyLearner.overlaps(minimum: 6, maximum: 12))
+
+        let legacyProfileGroup = try #require(AgeGroup.matching("8-10"))
+        #expect(legacyProfileGroup.minimumAge == 8)
+        #expect(legacyProfileGroup.maximumAge == 10)
+    }
+
     @Test func parentManagedChildDecodesWithoutUserAccount() throws {
         let data = Data(#"{"id":"00000000-0000-0000-0000-000000000001","user_id":null,"first_name":"Demo","age_band":"13-17","grade":8,"interests":["Technology"],"accessibility_preferences":[],"account_type":"parent_managed"}"#.utf8)
         let child = try JSONDecoder().decode(YouthProfile.self, from: data)

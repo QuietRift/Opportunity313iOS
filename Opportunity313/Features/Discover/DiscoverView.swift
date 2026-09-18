@@ -19,8 +19,9 @@ struct DiscoverView: View {
         AuthService
 
     @StateObject private var profileService = YouthProfileService()
+    @StateObject private var childService = ParentManagedYouthService()
     @Binding var recommendedOnly: Bool
-    @ScaledMetric private var categoryHeight = 56.0
+    @ScaledMetric private var categoryHeight = 50.0
 
     @State private var searchText = ""
 
@@ -33,6 +34,7 @@ struct DiscoverView: View {
     @State private var transportationOnly = false
 
     @State private var showFilters = false
+    @State private var selectedChildID: UUID?
 
 
     var body: some View {
@@ -42,6 +44,7 @@ struct DiscoverView: View {
             VStack(spacing: 0) {
 
                 discoverHeader
+                if authService.role == "parent" { childSelector }
                 searchBar
 
                 if authService.role == "youth" {
@@ -52,7 +55,7 @@ struct DiscoverView: View {
                     .padding(4)
                     .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal, 16)
-                    .padding(.vertical, 8)
+                    .padding(.vertical, 4)
                     .accessibilityIdentifier("discoveryMode")
                 }
                 categoryScroller
@@ -83,14 +86,42 @@ struct DiscoverView: View {
 
                 await opportunityService.fetchOpportunities()
                 if authService.role == "youth" { await profileService.fetchCurrentProfile() }
+                if authService.role == "parent" {
+                    await childService.fetchChildren()
+                    if selectedChildID == nil { selectedChildID = childService.children.first?.id }
+                }
             }
+        }
+    }
+
+    @ViewBuilder
+    private var childSelector: some View {
+        if childService.children.isEmpty {
+            Label("Add a child profile to see tailored opportunities", systemImage: "person.badge.plus")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+                .padding(.horizontal, 20)
+                .frame(maxWidth: .infinity, alignment: .leading)
+        } else {
+            HStack {
+                Text("Showing opportunities for").font(.subheadline).foregroundStyle(.secondary)
+                Spacer()
+                Picker("Child", selection: $selectedChildID) {
+                    ForEach(childService.children) { child in
+                        Text(child.firstName).tag(child.id as UUID?)
+                    }
+                }
+                .pickerStyle(.menu)
+            }
+            .padding(.horizontal, 20)
+            .padding(.vertical, 4)
         }
     }
 
 
     private func discoveryModeButton(_ title: String, recommended: Bool) -> some View {
         Button { recommendedOnly = recommended } label: {
-            Text(title).font(.subheadline.weight(.semibold))
+            Text(title).font(.caption.weight(.semibold))
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(recommendedOnly == recommended ? Color.white : Color.primary)
@@ -103,8 +134,8 @@ struct DiscoverView: View {
 
     private var discoverHeader: some View {
         HStack {
-            VStack(alignment: .leading, spacing: 4) {
-                Text("Discover").font(.largeTitle.bold())
+            VStack(alignment: .leading, spacing: 2) {
+                Text("Discover").font(.title2.bold())
                 Text("Find what's next in Detroit.")
                     .font(.subheadline).foregroundStyle(.secondary)
             }
@@ -113,15 +144,15 @@ struct DiscoverView: View {
                 Image(systemName: "slider.horizontal.3")
                     .font(.title3)
                     .foregroundStyle(hasActiveFilters ? Color.white : Color.orange)
-                    .frame(width: 48, height: 48)
+                    .frame(width: 44, height: 44)
                     .background(hasActiveFilters ? Color.orange : Color.orange.opacity(0.08), in: Circle())
                     .overlay(Circle().stroke(Color.orange.opacity(0.2)))
             }
             .accessibilityLabel(hasActiveFilters ? "Filters applied. Edit filters" : "Filter opportunities")
         }
         .padding(.horizontal, 20)
-        .padding(.top, 12)
-        .padding(.bottom, 12)
+        .padding(.top, 8)
+        .padding(.bottom, 4)
     }
 
     // Search stays outside the scrolling opportunity list.
@@ -143,11 +174,13 @@ struct DiscoverView: View {
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(16)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
-        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(.separator).opacity(0.15)))
+        .padding(.horizontal, 12)
+        .padding(.vertical, 10)
+        .frame(minHeight: 44)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+        .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(.separator).opacity(0.15)))
         .padding(.horizontal)
-        .padding(.vertical, 8)
+        .padding(.vertical, 4)
     }
 
     // MARK: - Main Content
@@ -327,7 +360,8 @@ struct DiscoverView: View {
             .opportunities
             .filter { opportunity in
 
-                (!recommendedOnly || opportunity.matchesRecommendation(for: profileService.currentProfile))
+                (activeProfile.map { opportunity.matchesEligibility(for: $0) } ?? (authService.role != "parent"))
+                && (!recommendedOnly || opportunity.matchesRecommendation(for: activeProfile))
                 && matchesSearch(
                     opportunity
                 )
@@ -356,6 +390,13 @@ struct DiscoverView: View {
                     opportunity
                 )
             }
+    }
+
+    private var activeProfile: YouthProfile? {
+        if authService.role == "parent" {
+            return childService.children.first { $0.id == selectedChildID }
+        }
+        return profileService.currentProfile
     }
 
 
