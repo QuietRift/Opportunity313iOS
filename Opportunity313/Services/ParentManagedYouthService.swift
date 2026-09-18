@@ -30,6 +30,11 @@ final class ParentManagedYouthService: ObservableObject {
             isLoading = false
         }
 
+        guard let userID = supabase.auth.currentUser?.id else {
+            children = []
+            return
+        }
+
         do {
 
             struct RelationshipRow: Decodable {
@@ -44,6 +49,7 @@ final class ParentManagedYouthService: ObservableObject {
             let relationships: [RelationshipRow] = try await supabase
                 .from("guardian_relationships")
                 .select("youth_profile_id")
+                .eq("guardian_user_id", value: userID)
                 .eq("status", value: "active")
                 .execute()
                 .value

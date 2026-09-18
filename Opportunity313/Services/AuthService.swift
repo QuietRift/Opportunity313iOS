@@ -19,6 +19,9 @@ final class AuthService: ObservableObject {
     @Published var role: String?
     @Published var needsOnboarding = false
     @Published var hasYouthProfile = false
+    @Published private(set) var userID: UUID?
+    @Published private(set) var isResolvingAccount = true
+    @Published private(set) var accountError: String?
 
     private let supabase =
         SupabaseManager.shared.client
@@ -31,18 +34,20 @@ final class AuthService: ObservableObject {
         for await (_, session) in
             supabase.auth.authStateChanges {
 
-            isAuthenticated =
-                session != nil
+            let shouldLoadAccount = userID != session?.user.id || role == nil
+            userID = session?.user.id
+            isAuthenticated = session != nil
 
             if session != nil {
-
-                await loadUserRole()
+                if shouldLoadAccount { await loadUserRole() }
 
             } else {
 
                 role = nil
                 needsOnboarding = false
                 hasYouthProfile = false
+                accountError = nil
+                isResolvingAccount = false
             }
         }
     }
@@ -157,6 +162,8 @@ final class AuthService: ObservableObject {
             try await supabase.auth
                 .signOut()
 
+            userID = nil
+            isAuthenticated = false
             role = nil
             needsOnboarding = false
             hasYouthProfile = false
@@ -172,6 +179,9 @@ final class AuthService: ObservableObject {
     // MARK: - Load User Role
 
     func loadUserRole() async {
+        isResolvingAccount = true
+        accountError = nil
+        defer { isResolvingAccount = false }
 
         guard let userID =
             supabase.auth.currentUser?.id else {
@@ -231,8 +241,7 @@ final class AuthService: ObservableObject {
 
         } catch {
 
-            errorMessage =
-                error.localizedDescription
+            accountError = error.localizedDescription
         }
     }
 
@@ -278,8 +287,7 @@ final class AuthService: ObservableObject {
 
             hasYouthProfile = false
 
-            errorMessage =
-                error.localizedDescription
+            accountError = error.localizedDescription
         }
     }
 

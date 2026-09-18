@@ -45,7 +45,7 @@ struct CreateOpportunityView: View {
         true
 
     @State private var deadline =
-        Date()
+        Date().addingTimeInterval(43_200)
 
     @State private var locationName =
         ""
@@ -512,6 +512,19 @@ struct CreateOpportunityView: View {
         else {
 
             return false
+        }
+
+        if hasDeadline && (deadline <= Date() || deadline > startsAt) {
+            return false
+        }
+
+        let cleanCapacity = capacityText.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanCapacity.isEmpty && (Int(cleanCapacity) ?? 0) <= 0 { return false }
+        let cleanURL = registrationURL.trimmingCharacters(in: .whitespacesAndNewlines)
+        if !cleanURL.isEmpty {
+            guard let url = URL(string: cleanURL),
+                  ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
+                  url.host != nil else { return false }
         }
 
         if let gradeMin,

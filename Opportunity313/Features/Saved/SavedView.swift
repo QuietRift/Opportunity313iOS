@@ -28,6 +28,8 @@ struct SavedView: View {
                         "Loading saved opportunities..."
                     )
 
+                } else if let error = opportunityService.errorMessage {
+                    ContentUnavailableView("Unable to Load Saved Opportunities", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if savedOpportunities.isEmpty {
 
                     ContentUnavailableView(

@@ -16,6 +16,9 @@ final class SavedOpportunityService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    private var generation = 0
+    private var savesInFlight: Set<UUID> = []
+
     private let supabase = SupabaseManager.shared.client
 
     private var youthProfileID: UUID?
@@ -31,11 +34,12 @@ final class SavedOpportunityService: ObservableObject {
             return
         }
 
+        let requestGeneration = generation
         isLoading = true
         errorMessage = nil
 
         defer {
-            isLoading = false
+            if requestGeneration == generation { isLoading = false }
         }
 
         do {
@@ -52,6 +56,7 @@ final class SavedOpportunityService: ObservableObject {
                 .execute()
                 .value
 
+            guard requestGeneration == generation else { return }
             guard let profile else {
                 savedOpportunityIDs = []
                 youthProfileID = nil
@@ -70,6 +75,7 @@ final class SavedOpportunityService: ObservableObject {
                 .execute()
                 .value
 
+            guard requestGeneration == generation else { return }
             savedOpportunityIDs = Set(
                 saves.map {
                     $0.opportunityId
@@ -78,6 +84,7 @@ final class SavedOpportunityService: ObservableObject {
 
         } catch {
 
+            guard requestGeneration == generation else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -103,12 +110,19 @@ final class SavedOpportunityService: ObservableObject {
 
         errorMessage = nil
 
+        guard !savesInFlight.contains(opportunityID) else { return }
+        savesInFlight.insert(opportunityID)
+        defer { savesInFlight.remove(opportunityID) }
+
+        let requestGeneration = generation
         if youthProfileID == nil {
             await loadSaves()
         }
+        guard requestGeneration == generation else { return }
 
         guard let youthProfileID else {
 
+            guard requestGeneration == generation else { return }
             errorMessage =
                 "A youth profile is required to save opportunities."
 
@@ -134,6 +148,7 @@ final class SavedOpportunityService: ObservableObject {
                     )
                     .execute()
 
+                guard requestGeneration == generation else { return }
                 savedOpportunityIDs.remove(
                     opportunityID
                 )
@@ -153,6 +168,7 @@ final class SavedOpportunityService: ObservableObject {
                     .insert(newSave)
                     .execute()
 
+                guard requestGeneration == generation else { return }
                 savedOpportunityIDs.insert(
                     opportunityID
                 )
@@ -160,6 +176,7 @@ final class SavedOpportunityService: ObservableObject {
 
         } catch {
 
+            guard requestGeneration == generation else { return }
             errorMessage = error.localizedDescription
         }
     }
@@ -168,6 +185,8 @@ final class SavedOpportunityService: ObservableObject {
     // MARK: - Reset
 
     func reset() {
+        generation += 1
+        isLoading = false
 
         savedOpportunityIDs = []
         youthProfileID = nil

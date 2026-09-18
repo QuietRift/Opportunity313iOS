@@ -31,6 +31,8 @@ struct ProviderOpportunitiesView: View {
                         "Loading opportunities..."
                     )
 
+                } else if let error = opportunityService.errorMessage {
+                    ContentUnavailableView("Unable to Load Opportunities", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if opportunityService
                     .opportunities.isEmpty {
 

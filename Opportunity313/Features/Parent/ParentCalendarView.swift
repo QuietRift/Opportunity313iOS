@@ -32,6 +32,13 @@ struct ParentCalendarView: View {
                     spacing: 24
                 ) {
 
+                    if let error = opportunityService.errorMessage {
+                        ContentUnavailableView("Unable to Load Calendar", systemImage: "exclamationmark.triangle", description: Text(error))
+                    }
+                    if let error = childService.errorMessage {
+                        ContentUnavailableView("Unable to Load Children", systemImage: "exclamationmark.triangle", description: Text(error))
+                    }
+
                     DatePicker(
                         "Select Date",
                         selection:

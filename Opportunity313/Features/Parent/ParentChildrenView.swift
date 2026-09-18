@@ -25,6 +25,8 @@ struct ParentChildrenView: View {
 
                     ProgressView("Loading children...")
 
+                } else if let error = childService.errorMessage {
+                    ContentUnavailableView("Unable to Load Children", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if childService.children.isEmpty {
 
                     ContentUnavailableView(

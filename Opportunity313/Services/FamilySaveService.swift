@@ -16,6 +16,9 @@ final class FamilySaveService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    private var generation = 0
+    private var savesInFlight: Set<UUID> = []
+
     private let supabase = SupabaseManager.shared.client
 
 
@@ -30,11 +33,12 @@ final class FamilySaveService: ObservableObject {
             return
         }
 
+        let requestGeneration = generation
         isLoading = true
         errorMessage = nil
 
         defer {
-            isLoading = false
+            if requestGeneration == generation { isLoading = false }
         }
 
         do {
@@ -64,10 +68,12 @@ final class FamilySaveService: ObservableObject {
                     )
             }
 
+            guard requestGeneration == generation else { return }
             savedByYouth = loadedSaves
 
         } catch {
 
+            guard requestGeneration == generation else { return }
             errorMessage =
                 error.localizedDescription
         }
@@ -99,6 +105,10 @@ final class FamilySaveService: ObservableObject {
 
         errorMessage = nil
 
+        guard !savesInFlight.contains(opportunityID) else { return }
+        savesInFlight.insert(opportunityID)
+        defer { savesInFlight.remove(opportunityID) }
+
         let currentlySaved =
             isSaved(
                 opportunityID:
@@ -107,6 +117,7 @@ final class FamilySaveService: ObservableObject {
                     youthProfileID
             )
 
+        let requestGeneration = generation
         do {
 
             if currentlySaved {
@@ -128,6 +139,7 @@ final class FamilySaveService: ObservableObject {
                     )
                     .execute()
 
+                guard requestGeneration == generation else { return }
                 savedByYouth[
                     youthProfileID
                 ]?
@@ -152,6 +164,7 @@ final class FamilySaveService: ObservableObject {
                     .insert(newSave)
                     .execute()
 
+                guard requestGeneration == generation else { return }
                 if savedByYouth[
                     youthProfileID
                 ] == nil {
@@ -171,6 +184,7 @@ final class FamilySaveService: ObservableObject {
 
         } catch {
 
+            guard requestGeneration == generation else { return }
             errorMessage =
                 error.localizedDescription
         }
@@ -180,6 +194,8 @@ final class FamilySaveService: ObservableObject {
     // MARK: - Reset
 
     func reset() {
+        generation += 1
+        isLoading = false
 
         savedByYouth = [:]
         errorMessage = nil

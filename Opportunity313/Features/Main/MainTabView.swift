@@ -237,7 +237,7 @@ struct ProviderTabView: View {
                     }
 
 
-                    ProviderEventsView()
+                    ProviderEventsView(organization: organization)
                         .tabItem {
 
                             Label(
@@ -259,6 +259,12 @@ struct ProviderTabView: View {
                         }
                 }
 
+            } else if let error = providerService.errorMessage {
+                VStack(spacing: 16) {
+                    ContentUnavailableView("Unable to Load Provider", systemImage: "exclamationmark.triangle", description: Text(error))
+                    Button("Try Again") { Task { await providerService.fetchOrganization() } }
+                    AccountView()
+                }
             } else {
 
                 ProviderSetupView(

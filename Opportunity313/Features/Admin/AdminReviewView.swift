@@ -27,6 +27,8 @@ struct AdminReviewView: View {
                         "Loading submissions..."
                     )
 
+                } else if let error = adminService.errorMessage {
+                    ContentUnavailableView("Unable to Load Submissions", systemImage: "exclamationmark.triangle", description: Text(error))
                 } else if adminService
                     .pendingOpportunities
                     .isEmpty {

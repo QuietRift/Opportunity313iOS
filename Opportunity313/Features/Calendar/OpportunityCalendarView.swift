@@ -27,6 +27,10 @@ struct OpportunityCalendarView: View {
 
                 VStack(alignment: .leading, spacing: 24) {
 
+                    if let error = opportunityService.errorMessage {
+                        ContentUnavailableView("Unable to Load Calendar", systemImage: "exclamationmark.triangle", description: Text(error))
+                    }
+
                     // MARK: Calendar
 
                     DatePicker(

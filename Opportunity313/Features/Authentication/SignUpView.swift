@@ -355,6 +355,7 @@ struct SignUpView: View {
                         )
                     }
                 }
+                .disabled(authService.isLoading)
                 .buttonStyle(
                     .bordered
                 )

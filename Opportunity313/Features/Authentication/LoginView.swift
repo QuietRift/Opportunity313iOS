@@ -55,7 +55,7 @@ struct LoginView: View {
                 Button {
                     Task {
                         await authService.signIn(
-                            email: email,
+                            email: email.trimmingCharacters(in: .whitespacesAndNewlines),
                             password: password
                         )
                     }
@@ -74,6 +74,8 @@ struct LoginView: View {
                     .foregroundStyle(Color(.systemBackground))
                     .clipShape(RoundedRectangle(cornerRadius: 14))
                 }
+
+                .disabled(authService.isLoading || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
 
                 Button("Create an Account") {
                     showSignUp = true
