@@ -96,12 +96,17 @@ struct HomeView: View {
                                     .background(.white.opacity(0.2), in: Capsule())
                             }
                             Spacer(minLength: 0)
-                            Image(systemName: interestSymbol(opportunity.category)).font(.system(size: 44))
-                                .accessibilityHidden(true)
                         }
                         .foregroundStyle(.white).padding(24).padding(.bottom, 20)
                         .frame(maxWidth: .infinity, maxHeight: .infinity, alignment: .leading)
-                        .background(LinearGradient(colors: [Color(red: 0.58, green: 0.23, blue: 0.02), .orange], startPoint: .leading, endPoint: .trailing), in: RoundedRectangle(cornerRadius: 24))
+                        .background {
+                            GeometryReader { geometry in
+                                Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
+                                    .frame(width: geometry.size.width, height: geometry.size.height).clipped()
+                                    .overlay(LinearGradient(colors: [.black.opacity(0.80), .black.opacity(0.25)], startPoint: .leading, endPoint: .trailing))
+                            }
+                        }
+                        .clipShape(RoundedRectangle(cornerRadius: 24))
                     }.buttonStyle(.plain).padding(.horizontal, 1)
                 }
             }
@@ -178,6 +183,16 @@ struct HomeView: View {
     }
 }
 
+private func opportunityImage(_ category: String) -> String {
+    switch category.lowercased() {
+    case "technology", "skilled trades": return "OpportunityTechnology"
+    case "arts", "media", "film": return "OpportunityArts"
+    case "culinary": return "OpportunityCulinary"
+    case "sports": return "OpportunitySports"
+    default: return "OpportunityLearning"
+    }
+}
+
 private func interestSymbol(_ category: String) -> String {
     switch category.lowercased() {
     case "arts": return "paintpalette.fill"
@@ -200,9 +215,8 @@ struct RecommendationCard: View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
-                    Image(systemName: interestSymbol(opportunity.category)).font(.system(size: 48))
-                        .foregroundStyle(.orange).frame(maxWidth: .infinity).frame(height: 130)
-                        .background(Color.orange.opacity(0.10))
+                    Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
+                        .frame(width: 270, height: 150).clipped()
                 }.buttonStyle(.plain).accessibilityLabel("View \(opportunity.title)")
                 Button {
                     Task { await savedService.toggleSave(opportunityID: opportunity.id) }
