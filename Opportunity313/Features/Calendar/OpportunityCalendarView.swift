@@ -40,6 +40,8 @@ struct OpportunityCalendarView: View {
                     )
                     .datePickerStyle(.graphical)
                     .labelsHidden()
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity)
 
 
                     // MARK: Selected Day
@@ -54,6 +56,8 @@ struct OpportunityCalendarView: View {
 
                     upcomingSection
                 }
+                .frame(maxWidth: 800)
+                .frame(maxWidth: .infinity)
                 .padding()
             }
             .safeAreaInset(edge: .top) {

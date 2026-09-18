@@ -18,8 +18,8 @@ opportunities. It does not introduce a separate event or ticketing product.
 ## Run
 
 Open `Opportunity313.xcodeproj` in Xcode 27. Select the Opportunity313 scheme
-and an iOS 27 Simulator, then Build or Run. Test with Product → Test.
-The deployment target and signing team retain the original project settings.
+and an iPhone or iPad Simulator, then Build or Run. Test with Product → Test.
+The app targets iPhone and iPad on iOS/iPadOS 17 or later. The signing team is unchanged.
 Swift dependencies are pinned by the committed `Package.resolved`.
 
 ## Architecture and configuration

@@ -390,6 +390,8 @@ struct OpportunityDetailView: View {
                     minLength: 30
                 )
             }
+            .frame(maxWidth: 800)
+            .frame(maxWidth: .infinity)
             .padding()
         }
         .navigationTitle("Opportunity")

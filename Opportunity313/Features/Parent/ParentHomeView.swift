@@ -77,6 +77,8 @@ struct ParentHomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("parentDeadlinesShortcut")
                 }
+                .frame(maxWidth: 800)
+                .frame(maxWidth: .infinity)
                 .padding()
             }
         }

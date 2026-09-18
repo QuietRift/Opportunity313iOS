@@ -8,126 +8,60 @@
 import SwiftUI
 
 struct AdminReviewView: View {
-
-    @StateObject private var adminService =
-        AdminService()
+    @StateObject private var adminService = AdminService()
+    @State private var selectedOpportunityID: UUID?
 
     var body: some View {
-
-        NavigationStack {
-
+        NavigationSplitView {
             Group {
-
-                if adminService.isLoading &&
-                    adminService
-                        .pendingOpportunities
-                        .isEmpty {
-
-                    ProgressView(
-                        "Loading submissions..."
-                    )
-
+                if adminService.isLoading && adminService.pendingOpportunities.isEmpty {
+                    ProgressView("Loading submissions...")
                 } else if let error = adminService.errorMessage {
-                    ContentUnavailableView("Unable to Load Submissions", systemImage: "exclamationmark.triangle", description: Text(error))
-                } else if adminService
-                    .pendingOpportunities
-                    .isEmpty {
-
-                    ContentUnavailableView(
-                        "Review Queue Clear",
-                        systemImage:
-                            "checkmark.circle",
-                        description: Text(
-                            "There are no provider opportunities waiting for review."
-                        )
-                    )
-
+                    VStack(spacing: 16) {
+                        ContentUnavailableView("Unable to Load Submissions", systemImage: "exclamationmark.triangle", description: Text(error))
+                        Button("Try Again") { Task { await adminService.fetchPendingOpportunities() } }
+                    }
+                } else if adminService.pendingOpportunities.isEmpty {
+                    ContentUnavailableView("Review Queue Clear", systemImage: "checkmark.circle", description: Text("There are no provider opportunities waiting for review."))
                 } else {
-
-                    List {
-
-                        ForEach(
-                            adminService
-                                .pendingOpportunities
-                        ) { opportunity in
-
-                            NavigationLink {
-
-                                AdminOpportunityDetailView(
-                                    opportunity:
-                                        opportunity,
-                                    adminService:
-                                        adminService
-                                )
-
-                            } label: {
-
-                                AdminOpportunityCard(
-                                    opportunity:
-                                        opportunity
-                                )
+                    List(selection: $selectedOpportunityID) {
+                        ForEach(adminService.pendingOpportunities) { opportunity in
+                            NavigationLink(value: opportunity.id) {
+                                AdminOpportunityCard(opportunity: opportunity)
                             }
                         }
                     }
                     .listStyle(.plain)
                 }
             }
-            .navigationTitle(
-                "Review Queue"
-            )
+            .navigationTitle("Review Queue")
+            .navigationSplitViewColumnWidth(min: 300, ideal: 360, max: 440)
             .toolbar {
-
-                ToolbarItem(
-                    placement:
-                        .topBarTrailing
-                ) {
-
-                    Button {
-
-                        Task {
-
-                            await adminService
-                                .fetchPendingOpportunities()
-                        }
-
-                    } label: {
-
-                        Image(
-                            systemName:
-                                "arrow.clockwise"
-                        )
+                ToolbarItem(placement: .topBarTrailing) {
+                    Button { Task { await adminService.fetchPendingOpportunities() } } label: {
+                        Image(systemName: "arrow.clockwise")
                     }
+                    .accessibilityLabel("Refresh review queue")
                 }
             }
-            .task {
-
-                await adminService
-                    .fetchPendingOpportunities()
+            .refreshable { await adminService.fetchPendingOpportunities() }
+        } detail: {
+            if let opportunity = adminService.pendingOpportunities.first(where: { $0.id == selectedOpportunityID }) {
+                AdminOpportunityDetailView(opportunity: opportunity, adminService: adminService)
+                    .id(opportunity.id)
+            } else {
+                ContentUnavailableView("Select a Submission", systemImage: "doc.text.magnifyingglass", description: Text("Choose an opportunity from the review queue to inspect its details."))
             }
-            .refreshable {
-
-                await adminService
-                    .fetchPendingOpportunities()
-            }
-            .safeAreaInset(
-                edge: .bottom
-            ) {
-
-                if let success =
-                    adminService
-                        .successMessage {
-
-                    Text(success)
-                        .font(.subheadline)
-                        .fontWeight(.medium)
-                        .padding()
-                        .frame(
-                            maxWidth: .infinity
-                        )
-                        .background(
-                            .regularMaterial
-                        )
-                }
+        }
+        .navigationSplitViewStyle(.balanced)
+        .task { await adminService.fetchPendingOpportunities() }
+        .onChange(of: adminService.pendingOpportunities.map(\.id)) { _, ids in
+            if let selectedOpportunityID, !ids.contains(selectedOpportunityID) { self.selectedOpportunityID = nil }
+        }
+        .safeAreaInset(edge: .bottom) {
+            if let success = adminService.successMessage {
+                Text(success).font(.subheadline).fontWeight(.medium)
+                    .padding().frame(maxWidth: .infinity).background(.regularMaterial)
             }
         }
     }

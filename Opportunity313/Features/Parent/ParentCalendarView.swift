@@ -52,6 +52,8 @@ struct ParentCalendarView: View {
                         .graphical
                     )
                     .labelsHidden()
+                    .frame(maxWidth: 480)
+                    .frame(maxWidth: .infinity)
 
 
                     childLegend
@@ -64,6 +66,8 @@ struct ParentCalendarView: View {
 
                     upcomingSection
                 }
+                .frame(maxWidth: 800)
+                .frame(maxWidth: .infinity)
                 .padding()
             }
             .safeAreaInset(edge: .top) {

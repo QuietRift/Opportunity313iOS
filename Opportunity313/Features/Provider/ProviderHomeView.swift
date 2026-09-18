@@ -78,6 +78,8 @@ struct ProviderHomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("providerAccountShortcut")
                 }
+                .frame(maxWidth: 800)
+                .frame(maxWidth: .infinity)
                 .padding()
             }
         }

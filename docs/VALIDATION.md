@@ -129,3 +129,23 @@ the scrolling opportunity list. Youth and parent share this implementation;
 provider/admin do not have Discover. Search and clearing retain the existing
 filter behavior. Xcode build succeeded with no issues at 10:09 on 2026-09-18.
 This small layout follow-up was build-checked; the four-role suite was not rerun.
+
+## Tablet layout follow-up
+
+Native device-family settings already included iPhone and iPad. The minimum OS
+is now iOS/iPadOS 17 rather than 27; dependencies declare iOS 16 support. Xcode
+built the changed app successfully with no issues at 10:29 using an iPad Air
+11-inch (M4) destination. Readable dashboard/detail/calendar widths and a
+centered date picker improve larger windows. Admin uses an adaptive queue/detail
+split view and clears selection when a published item leaves the queue.
+
+Tablet runtime verification is incomplete: both attempted iPad Simulator test
+launches stalled before producing role-flow results and were stopped. This is
+not recorded as a passing tablet test. Older OS 17 runtime, physical tablet,
+rotation, narrow multitasking windows and populated admin split-view behavior
+remain to be verified. The temporary ignored credential scheme was deleted.
+The six passing tests earlier in this record predate this layout follow-up.
+
+No web frontend was changed. The separate GitHub blueprint repository was
+located, but the actual Lovable/React application URL/source is still needed.
+See PLATFORM_SUPPORT.md for the current platform boundaries.
