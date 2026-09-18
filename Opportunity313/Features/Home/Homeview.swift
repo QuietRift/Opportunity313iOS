@@ -214,14 +214,19 @@ private func interestSymbol(_ category: String) -> String {
 struct RecommendationCard: View {
     @EnvironmentObject var savedService: SavedOpportunityService
     let opportunity: Opportunity
+    var showsCategory = true
+    var allowsSave = true
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
                 NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
-                    Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
-                        .frame(width: 270, height: 150).clipped()
+                    GeometryReader { geometry in
+                        Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
+                            .frame(width: geometry.size.width, height: 150).clipped()
+                    }.frame(height: 150)
                 }.buttonStyle(.plain).accessibilityLabel("View \(opportunity.title)")
+                if allowsSave {
                 Button {
                     Task { await savedService.toggleSave(opportunityID: opportunity.id) }
                 } label: {
@@ -230,10 +235,13 @@ struct RecommendationCard: View {
                         .background(.background, in: Circle())
                 }.buttonStyle(.plain).padding(10)
                     .accessibilityLabel(savedService.isSaved(opportunity.id) ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
+                }
             }
             NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
                 VStack(alignment: .leading, spacing: 10) {
-                    Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                    if showsCategory {
+                        Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                    }
                     Text(opportunity.title).font(.headline).lineLimit(3).frame(height: 64, alignment: .topLeading)
                     Label(opportunity.neighborhood ?? opportunity.city, systemImage: "mappin.and.ellipse")
                         .font(.caption).foregroundStyle(.secondary).lineLimit(1)

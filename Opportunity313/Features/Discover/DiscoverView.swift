@@ -191,77 +191,24 @@ struct DiscoverView: View {
                             groupedOpportunities[category] ?? []
                         ) { opportunity in
 
-                            HStack(
-                                alignment: .top,
-                                spacing: 12
-                            ) {
-
-                                NavigationLink {
-
-                                    OpportunityDetailView(
-                                        opportunity:
-                                            opportunity
-                                    )
-
-                                } label: {
-
-                                    OpportunityRow(
-                                        opportunity:
-                                            opportunity
-                                    )
-                                }
+                            RecommendationCard(opportunity: opportunity,
+                                               showsCategory: false,
+                                               allowsSave: authService.role == "youth")
                                 .accessibilityIdentifier("discoverOpportunityLink")
+                                .frame(maxWidth: 760)
+                                .frame(maxWidth: .infinity)
+                                .listRowSeparator(.hidden)
+                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
 
-
-                                // Youth accounts can save directly.
-                                if authService.role == "youth" {
-
-                                    Button {
-
-                                        Task {
-
-                                            await savedService
-                                                .toggleSave(
-                                                    opportunityID:
-                                                        opportunity.id
-                                                )
-                                        }
-
-                                    } label: {
-
-                                        Image(
-                                            systemName:
-                                                savedService
-                                                    .isSaved(
-                                                        opportunity.id
-                                                    )
-                                                ? "bookmark.fill"
-                                                : "bookmark"
-                                        )
-                                        .font(.title3)
-                                    }
-                                    .buttonStyle(.borderless)
-                                    .accessibilityLabel(
-                                        savedService
-                                            .isSaved(
-                                                opportunity.id
-                                            )
-                                        ? "Remove saved opportunity"
-                                        : "Save opportunity"
-                                    )
-                                }
-                            }
-                            .padding(
-                                .vertical,
-                                4
-                            )
                         }
                     } header: {
-                        Text(category)
-                            .font(.title3.bold())
-                            .foregroundStyle(.primary)
-                            .textCase(nil)
-                            .padding(.vertical, 8)
+                        HStack(spacing: 10) {
+                            RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 4, height: 24)
+                            Text(category).font(.title3.bold()).foregroundStyle(.primary)
+                            Spacer()
+                        }
+                        .textCase(nil)
+                        .padding(.vertical, 12)
                     }
                 }
             }
