@@ -185,74 +185,84 @@ struct DiscoverView: View {
 
             List {
 
-                ForEach(
-                    filteredOpportunities
-                ) { opportunity in
+                ForEach(resultCategories, id: \.self) { category in
+                    Section {
+                        ForEach(
+                            groupedOpportunities[category] ?? []
+                        ) { opportunity in
 
-                    HStack(
-                        alignment: .top,
-                        spacing: 12
-                    ) {
+                            HStack(
+                                alignment: .top,
+                                spacing: 12
+                            ) {
 
-                        NavigationLink {
+                                NavigationLink {
 
-                            OpportunityDetailView(
-                                opportunity:
-                                    opportunity
-                            )
+                                    OpportunityDetailView(
+                                        opportunity:
+                                            opportunity
+                                    )
 
-                        } label: {
+                                } label: {
 
-                            OpportunityRow(
-                                opportunity:
-                                    opportunity
-                            )
-                        }
-                        .accessibilityIdentifier("discoverOpportunityLink")
-
-
-                        // Youth accounts can save directly.
-                        if authService.role == "youth" {
-
-                            Button {
-
-                                Task {
-
-                                    await savedService
-                                        .toggleSave(
-                                            opportunityID:
-                                                opportunity.id
-                                        )
+                                    OpportunityRow(
+                                        opportunity:
+                                            opportunity
+                                    )
                                 }
+                                .accessibilityIdentifier("discoverOpportunityLink")
 
-                            } label: {
 
-                                Image(
-                                    systemName:
+                                // Youth accounts can save directly.
+                                if authService.role == "youth" {
+
+                                    Button {
+
+                                        Task {
+
+                                            await savedService
+                                                .toggleSave(
+                                                    opportunityID:
+                                                        opportunity.id
+                                                )
+                                        }
+
+                                    } label: {
+
+                                        Image(
+                                            systemName:
+                                                savedService
+                                                    .isSaved(
+                                                        opportunity.id
+                                                    )
+                                                ? "bookmark.fill"
+                                                : "bookmark"
+                                        )
+                                        .font(.title3)
+                                    }
+                                    .buttonStyle(.borderless)
+                                    .accessibilityLabel(
                                         savedService
                                             .isSaved(
                                                 opportunity.id
                                             )
-                                        ? "bookmark.fill"
-                                        : "bookmark"
-                                )
-                                .font(.title3)
-                            }
-                            .buttonStyle(.borderless)
-                            .accessibilityLabel(
-                                savedService
-                                    .isSaved(
-                                        opportunity.id
+                                        ? "Remove saved opportunity"
+                                        : "Save opportunity"
                                     )
-                                ? "Remove saved opportunity"
-                                : "Save opportunity"
+                                }
+                            }
+                            .padding(
+                                .vertical,
+                                4
                             )
                         }
+                    } header: {
+                        Text(category)
+                            .font(.title3.bold())
+                            .foregroundStyle(.primary)
+                            .textCase(nil)
+                            .padding(.vertical, 8)
                     }
-                    .padding(
-                        .vertical,
-                        4
-                    )
                 }
             }
             .listStyle(.plain)
@@ -389,6 +399,16 @@ struct DiscoverView: View {
         .clipped()
     }
 
+
+    private var groupedOpportunities: [String: [Opportunity]] {
+        Dictionary(grouping: filteredOpportunities, by: \.category)
+    }
+
+    private var resultCategories: [String] {
+        groupedOpportunities.keys.sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
+    }
 
     // MARK: - Filtered Opportunities
 
