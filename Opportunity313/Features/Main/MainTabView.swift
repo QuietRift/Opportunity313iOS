@@ -63,7 +63,9 @@ struct YouthTabView: View {
 
         TabView(selection: $selectedTab) {
 
-            HomeView(onSeeMore: { recommendedOnly = true; selectedTab = 1 })
+            HomeView(onSeeMore: { recommendedOnly = true; selectedTab = 1 },
+                     onDiscover: { recommendedOnly = false; selectedTab = 1 },
+                     onProfile: { selectedTab = 4 })
                 .tag(0)
                 .tabItem {
 

@@ -158,3 +158,17 @@ is clipped to its header bounds. Pull-to-refresh now belongs to the opportunity
 list instead of the whole Discover screen. Xcode build succeeded with no issues
 at 14:06 on 2026-09-18. This change was build-checked; Simulator gesture behavior
 and the four-role suite were not rerun.
+
+## Youth Home visual polish
+
+Applied the requested Learnly-inspired hierarchy to youth Home only: compact
+profile header, Discover shortcut, deadline bell sheet, up to four swipeable
+featured opportunities, SF Symbol interest tiles, three horizontal recommendation
+cards with independent save buttons, and upcoming deadlines. Existing detail,
+profile, save and recommendation routing is retained. No backend/schema changes.
+The model has no avatar/photo or notification feed, so the header uses a profile
+symbol and the bell opens existing deadlines without a fabricated unread badge.
+Opportunity artwork is category-based symbols rather than unrelated course photos.
+Xcode iPhone 18 Pro build succeeded with no issues at 15:33 on 2026-09-18.
+Launch was requested, but Device Hub inspection timed out; visual and gesture
+verification remains pending. The prior four-role suite was not rerun.
