@@ -187,6 +187,18 @@ struct DiscoverView: View {
 
                 ForEach(resultCategories, id: \.self) { category in
                     Section {
+                        if selectedCategory != nil {
+                            ForEach(groupedOpportunities[category] ?? []) { opportunity in
+                                RecommendationCard(opportunity: opportunity,
+                                                   showsCategory: false,
+                                                   allowsSave: authService.role == "youth")
+                                    .accessibilityIdentifier("discoverOpportunityLink")
+                                    .frame(maxWidth: 760)
+                                    .frame(maxWidth: .infinity)
+                                    .listRowSeparator(.hidden)
+                                    .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
+                            }
+                        } else {
                         ScrollView(.horizontal, showsIndicators: false) {
                             HStack(alignment: .top, spacing: 16) {
                                 ForEach(groupedOpportunities[category] ?? []) { opportunity in
@@ -201,17 +213,20 @@ struct DiscoverView: View {
                         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                         .listRowSeparator(.hidden)
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
+                        }
                     } header: {
                         HStack(spacing: 10) {
                             RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 4, height: 24)
                             Text(category).font(.title3.bold()).foregroundStyle(.primary)
                             Spacer()
+                            if selectedCategory == nil {
                             Button {
                                 selectedCategory = category
                             } label: {
                                 Text("See all").font(.subheadline).foregroundStyle(.orange)
                             }
                             .accessibilityLabel("See all \(category) opportunities")
+                            }
                         }
                         .textCase(nil)
                         .padding(.vertical, 12)
