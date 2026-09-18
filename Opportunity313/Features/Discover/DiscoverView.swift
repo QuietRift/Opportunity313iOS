@@ -206,8 +206,8 @@ struct DiscoverView: View {
                             RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 4, height: 24)
                             Text(category).font(.title3.bold()).foregroundStyle(.primary)
                             Spacer()
-                            NavigationLink {
-                                categoryResults(category)
+                            Button {
+                                selectedCategory = category
                             } label: {
                                 Text("See all").font(.subheadline).foregroundStyle(.orange)
                             }
@@ -234,27 +234,11 @@ struct DiscoverView: View {
     }
 
 
-    private func categoryResults(_ category: String) -> some View {
-        ScrollView {
-            LazyVStack(spacing: 16) {
-                ForEach(groupedOpportunities[category] ?? []) { opportunity in
-                    RecommendationCard(opportunity: opportunity,
-                                       showsCategory: false,
-                                       allowsSave: authService.role == "youth")
-                }
-            }
-            .padding(16)
-            .frame(maxWidth: 760)
-            .frame(maxWidth: .infinity)
-        }
-        .navigationTitle(category)
-        .navigationBarTitleDisplayMode(.inline)
-    }
-
     // MARK: - Category Scroller
 
     private var categoryScroller: some View {
 
+        ScrollViewReader { proxy in
         ScrollView(
             .horizontal,
             showsIndicators: false
@@ -357,6 +341,7 @@ struct DiscoverView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .id(category)
                     .accessibilityIdentifier("category_" + category)
                 }
             }
@@ -367,6 +352,12 @@ struct DiscoverView: View {
         }
         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
         .clipped()
+        .onChange(of: selectedCategory) { _, category in
+            if let category {
+                withAnimation { proxy.scrollTo(category, anchor: .center) }
+            }
+        }
+        }
     }
 
 
