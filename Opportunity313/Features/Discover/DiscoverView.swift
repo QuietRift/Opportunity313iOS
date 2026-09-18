@@ -41,6 +41,8 @@ struct DiscoverView: View {
 
             VStack(spacing: 0) {
 
+                searchBar
+
                 if authService.role == "youth" {
                     Picker("Discovery", selection: $recommendedOnly) {
                         Text("All Opportunities").tag(false)
@@ -60,10 +62,6 @@ struct DiscoverView: View {
             }
             .navigationTitle("Discover")
             .navigationBarTitleDisplayMode(.inline)
-            .searchable(
-                text: $searchText,
-                prompt: "Search opportunities"
-            )
             .toolbar {
 
                 ToolbarItem(
@@ -120,6 +118,31 @@ struct DiscoverView: View {
         }
     }
 
+
+    // Search stays outside the scrolling opportunity list.
+    private var searchBar: some View {
+        HStack(spacing: 8) {
+            Image(systemName: "magnifyingglass")
+                .foregroundStyle(.secondary)
+                .accessibilityHidden(true)
+            TextField("Search opportunities", text: $searchText)
+                .textInputAutocapitalization(.never)
+                .autocorrectionDisabled()
+                .submitLabel(.search)
+                .accessibilityIdentifier("discoverSearch")
+            if !searchText.isEmpty {
+                Button { searchText = "" } label: {
+                    Image(systemName: "xmark.circle.fill")
+                        .foregroundStyle(.secondary)
+                }
+                .accessibilityLabel("Clear search")
+            }
+        }
+        .padding(12)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .padding(.horizontal)
+        .padding(.vertical, 8)
+    }
 
     // MARK: - Main Content
 

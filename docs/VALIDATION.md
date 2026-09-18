@@ -121,3 +121,11 @@ selection, and admin sign-in/review/account/sign-out. All accounts signed out.
 Result bundle: `Test-MVP Validation Local-2026.09.18_09-48-48--0400.xcresult`.
 The ignored credential scheme was removed again after this run; Xcode is back
 on the credential-free Opportunity313 scheme.
+
+## Pinned Discover controls
+
+Discover search now sits in the fixed header alongside category controls, outside
+the scrolling opportunity list. Youth and parent share this implementation;
+provider/admin do not have Discover. Search and clearing retain the existing
+filter behavior. Xcode build succeeded with no issues at 10:09 on 2026-09-18.
+This small layout follow-up was build-checked; the four-role suite was not rerun.
