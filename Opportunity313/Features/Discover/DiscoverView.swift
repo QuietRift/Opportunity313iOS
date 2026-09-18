@@ -104,17 +104,6 @@ struct DiscoverView: View {
                 await opportunityService.fetchOpportunities()
                 if authService.role == "youth" { await profileService.fetchCurrentProfile() }
             }
-            .refreshable {
-
-                await opportunityService
-                    .fetchOpportunities()
-
-                if authService.role == "youth" {
-
-                    await savedService
-                        .loadSaves()
-                }
-            }
         }
     }
 
@@ -267,6 +256,17 @@ struct DiscoverView: View {
                 }
             }
             .listStyle(.plain)
+            .refreshable {
+
+                await opportunityService
+                    .fetchOpportunities()
+
+                if authService.role == "youth" {
+
+                    await savedService
+                        .loadSaves()
+                }
+            }
         }
     }
 
@@ -289,6 +289,7 @@ struct DiscoverView: View {
                 } label: {
 
                     Text("All")
+                        .fixedSize()
                         .font(.subheadline)
                         .fontWeight(
                             selectedCategory == nil
@@ -337,6 +338,7 @@ struct DiscoverView: View {
                     } label: {
 
                         Text(category)
+                            .fixedSize()
                             .font(
                                 .subheadline
                             )
@@ -381,11 +383,10 @@ struct DiscoverView: View {
             .padding(
                 .horizontal
             )
-            .padding(
-                .vertical,
-                10
-            )
+            .frame(height: categoryHeight)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+        .clipped()
     }
 
 

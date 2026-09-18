@@ -149,3 +149,12 @@ The six passing tests earlier in this record predate this layout follow-up.
 No web frontend was changed. The separate GitHub blueprint repository was
 located, but the actual Lovable/React application URL/source is still needed.
 See PLATFORM_SUPPORT.md for the current platform boundaries.
+
+## Discover category scrolling follow-up
+
+Youth and parent share a fixed-height horizontal category strip. Category labels
+no longer wrap, vertical bounce is constrained to content size, and the strip
+is clipped to its header bounds. Pull-to-refresh now belongs to the opportunity
+list instead of the whole Discover screen. Xcode build succeeded with no issues
+at 14:06 on 2026-09-18. This change was build-checked; Simulator gesture behavior
+and the four-role suite were not rerun.
