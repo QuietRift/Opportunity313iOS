@@ -56,11 +56,15 @@ struct YouthTabView: View {
     @EnvironmentObject var savedService:
         SavedOpportunityService
 
+    @State private var selectedTab = 0
+    @State private var recommendedOnly = false
+
     var body: some View {
 
-        TabView {
+        TabView(selection: $selectedTab) {
 
-            HomeView()
+            HomeView(onSeeMore: { recommendedOnly = true; selectedTab = 1 })
+                .tag(0)
                 .tabItem {
 
                     Label(
@@ -71,7 +75,8 @@ struct YouthTabView: View {
                 }
 
 
-            DiscoverView()
+            DiscoverView(recommendedOnly: $recommendedOnly)
+                .tag(1)
                 .tabItem {
 
                     Label(
@@ -83,6 +88,7 @@ struct YouthTabView: View {
 
 
             SavedView()
+                .tag(2)
                 .tabItem {
 
                     Label(
@@ -94,6 +100,7 @@ struct YouthTabView: View {
 
 
             OpportunityCalendarView()
+                .tag(3)
                 .tabItem {
 
                     Label(
@@ -105,6 +112,7 @@ struct YouthTabView: View {
 
 
             ProfileView()
+                .tag(4)
                 .tabItem {
 
                     Label(
@@ -127,11 +135,16 @@ struct YouthTabView: View {
 
 struct ParentTabView: View {
 
+    @State private var selectedTab = 0
+    @State private var recommendedOnly = false
+    @State private var deadlinesOnly = false
+
     var body: some View {
 
-        TabView {
+        TabView(selection: $selectedTab) {
 
-            ParentHomeView()
+            ParentHomeView(onChildren: { selectedTab = 2 }, onSaved: { deadlinesOnly = false; selectedTab = 3 }, onDeadlines: { deadlinesOnly = true; selectedTab = 3 })
+                .tag(0)
                 .tabItem {
 
                     Label(
@@ -142,7 +155,8 @@ struct ParentTabView: View {
                 }
 
 
-            DiscoverView()
+            DiscoverView(recommendedOnly: $recommendedOnly)
+                .tag(1)
                 .tabItem {
 
                     Label(
@@ -154,6 +168,7 @@ struct ParentTabView: View {
 
 
             ParentChildrenView()
+                .tag(2)
                 .tabItem {
 
                     Label(
@@ -164,7 +179,8 @@ struct ParentTabView: View {
                 }
 
 
-            ParentCalendarView()
+            ParentCalendarView(deadlinesOnly: $deadlinesOnly)
+                .tag(3)
                 .tabItem {
 
                     Label(
@@ -176,6 +192,7 @@ struct ParentTabView: View {
 
 
             AccountView()
+                .tag(4)
                 .tabItem {
 
                     Label(
@@ -196,6 +213,8 @@ struct ProviderTabView: View {
     @StateObject private var providerService =
         ProviderService()
 
+    @State private var selectedTab = 0
+
     var body: some View {
 
         Group {
@@ -210,9 +229,10 @@ struct ProviderTabView: View {
             } else if let organization =
                         providerService.organization {
 
-                TabView {
+                TabView(selection: $selectedTab) {
 
-                    ProviderHomeView()
+                    ProviderHomeView(onOpportunities: { selectedTab = 1 }, onEvents: { selectedTab = 2 }, onAccount: { selectedTab = 3 })
+                        .tag(0)
                         .tabItem {
 
                             Label(
@@ -227,6 +247,7 @@ struct ProviderTabView: View {
                         organization:
                             organization
                     )
+                    .tag(1)
                     .tabItem {
 
                         Label(
@@ -238,6 +259,7 @@ struct ProviderTabView: View {
 
 
                     ProviderEventsView(organization: organization)
+                        .tag(2)
                         .tabItem {
 
                             Label(
@@ -249,6 +271,7 @@ struct ProviderTabView: View {
 
 
                     AccountView()
+                        .tag(3)
                         .tabItem {
 
                             Label(

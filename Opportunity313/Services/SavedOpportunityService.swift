@@ -17,6 +17,7 @@ final class SavedOpportunityService: ObservableObject {
     @Published var errorMessage: String?
 
     private var generation = 0
+    private var loadVersion = 0
     private var savesInFlight: Set<UUID> = []
 
     private let supabase = SupabaseManager.shared.client
@@ -34,12 +35,14 @@ final class SavedOpportunityService: ObservableObject {
             return
         }
 
+        loadVersion += 1
+        let requestVersion = loadVersion
         let requestGeneration = generation
         isLoading = true
         errorMessage = nil
 
         defer {
-            if requestGeneration == generation { isLoading = false }
+            if requestGeneration == generation && requestVersion == loadVersion { isLoading = false }
         }
 
         do {
@@ -56,7 +59,7 @@ final class SavedOpportunityService: ObservableObject {
                 .execute()
                 .value
 
-            guard requestGeneration == generation else { return }
+            guard requestGeneration == generation, requestVersion == loadVersion, !Task.isCancelled else { return }
             guard let profile else {
                 savedOpportunityIDs = []
                 youthProfileID = nil
@@ -75,7 +78,7 @@ final class SavedOpportunityService: ObservableObject {
                 .execute()
                 .value
 
-            guard requestGeneration == generation else { return }
+            guard requestGeneration == generation, requestVersion == loadVersion, !Task.isCancelled else { return }
             savedOpportunityIDs = Set(
                 saves.map {
                     $0.opportunityId
@@ -84,7 +87,7 @@ final class SavedOpportunityService: ObservableObject {
 
         } catch {
 
-            guard requestGeneration == generation, !Task.isCancelled else { return }
+            guard requestGeneration == generation, requestVersion == loadVersion, !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
     }

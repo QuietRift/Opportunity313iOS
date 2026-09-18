@@ -9,6 +9,10 @@ import SwiftUI
 
 struct ParentHomeView: View {
 
+    var onChildren: () -> Void = {}
+    var onSaved: () -> Void = {}
+    var onDeadlines: () -> Void = {}
+
     var body: some View {
 
         NavigationStack {
@@ -39,27 +43,39 @@ struct ParentHomeView: View {
                         .foregroundStyle(.secondary)
                     }
 
-                    ParentDashboardCard(
-                        title: "Your Children",
-                        description:
-                            "Manage youth profiles and interests.",
-                        icon: "person.2.fill"
-                    )
+                    Button(action: onChildren) {
+                        ParentDashboardCard(
+                            title: "Your Children",
+                            description:
+                                "Manage youth profiles and interests.",
+                            icon: "person.2.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentChildrenShortcut")
 
-                    ParentDashboardCard(
-                        title: "Saved Opportunities",
-                        description:
-                            "Keep track of programs your family is considering.",
-                        icon: "bookmark.fill"
-                    )
+                    Button(action: onSaved) {
+                        ParentDashboardCard(
+                            title: "Saved Opportunities",
+                            description:
+                                "Keep track of programs your family is considering.",
+                            icon: "bookmark.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentSavedShortcut")
 
-                    ParentDashboardCard(
-                        title: "Upcoming Deadlines",
-                        description:
-                            "Stay ahead of registrations and important dates.",
-                        icon:
-                            "calendar.badge.exclamationmark"
-                    )
+                    Button(action: onDeadlines) {
+                        ParentDashboardCard(
+                            title: "Upcoming Deadlines",
+                            description:
+                                "Stay ahead of registrations and important dates.",
+                            icon:
+                                "calendar.badge.exclamationmark"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentDeadlinesShortcut")
                 }
                 .padding()
             }

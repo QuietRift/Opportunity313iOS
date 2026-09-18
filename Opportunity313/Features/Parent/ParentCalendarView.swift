@@ -18,6 +18,8 @@ struct ParentCalendarView: View {
     @EnvironmentObject var familySaveService:
         FamilySaveService
 
+    @Binding var deadlinesOnly: Bool
+
     @State private var selectedDate = Date()
     @State private var didSetInitialDate = false
 
@@ -52,6 +54,8 @@ struct ParentCalendarView: View {
                     .labelsHidden()
 
 
+                    childLegend
+
                     selectedDaySection
 
 
@@ -61,6 +65,19 @@ struct ParentCalendarView: View {
                     upcomingSection
                 }
                 .padding()
+            }
+            .safeAreaInset(edge: .top) {
+                Picker("Family Calendar Filter", selection: $deadlinesOnly) {
+                    Text("Saved Opportunities").tag(false)
+                    Text("Deadlines").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.background)
+            }
+            .onChange(of: deadlinesOnly) {
+                if selectedDayItems.isEmpty, let next = upcomingItems.first { selectedDate = next.date }
             }
             .navigationTitle(
                 "Family Calendar"
@@ -76,6 +93,35 @@ struct ParentCalendarView: View {
         }
     }
 
+
+    private func color(for childID: UUID) -> Color {
+        let palette: [Color] = [.blue, .orange, .purple, .teal, .pink, .green, .indigo, .brown]
+        let ids = childService.children.map(\.id).sorted { $0.uuidString < $1.uuidString }
+        return palette[(ids.firstIndex(of: childID) ?? 0) % palette.count]
+    }
+
+    private var childLegend: some View {
+        VStack(alignment: .leading, spacing: 8) {
+            if !childService.children.isEmpty {
+                Text("Your Children").font(.caption).foregroundStyle(.secondary)
+                ViewThatFits(in: .horizontal) {
+                    HStack(spacing: 16) { legendEntries }
+                    VStack(alignment: .leading, spacing: 8) { legendEntries }
+                }
+                .accessibilityIdentifier("familyCalendarLegend")
+            }
+        }
+    }
+
+    private var legendEntries: some View {
+        ForEach(childService.children) { child in
+            HStack(spacing: 6) {
+                Circle().fill(color(for: child.id)).frame(width: 10, height: 10)
+                    .accessibilityHidden(true)
+                Text(child.firstName).font(.subheadline)
+            }
+        }
+    }
 
     // MARK: - Selected Day
 
@@ -157,7 +203,8 @@ struct ParentCalendarView: View {
                     } label: {
 
                         ParentCalendarCard(
-                            item: item
+                            item: item,
+                            childColor: color(for: item.child.id)
                         )
                     }
                     .buttonStyle(.plain)
@@ -213,7 +260,8 @@ struct ParentCalendarView: View {
                     } label: {
 
                         ParentCalendarCard(
-                            item: item
+                            item: item,
+                            childColor: color(for: item.child.id)
                         )
                     }
                     .buttonStyle(.plain)
@@ -291,7 +339,7 @@ struct ParentCalendarView: View {
             }
         }
 
-        return items.sorted {
+        return items.filter { !deadlinesOnly || $0.type == .deadline }.sorted {
 
             $0.date < $1.date
         }
@@ -442,6 +490,7 @@ enum ParentCalendarItemType {
 struct ParentCalendarCard: View {
 
     let item: ParentCalendarItem
+    let childColor: Color
 
     var body: some View {
 
@@ -519,11 +568,8 @@ struct ParentCalendarCard: View {
                         .vertical,
                         4
                     )
-                    .background(
-                        Color(
-                            .tertiarySystemBackground
-                        )
-                    )
+                    .background(childColor.opacity(0.15))
+                    .foregroundStyle(childColor)
                     .clipShape(
                         Capsule()
                     )
@@ -582,6 +628,11 @@ struct ParentCalendarCard: View {
             )
         }
         .padding()
+        .overlay(alignment: .leading) {
+            RoundedRectangle(cornerRadius: 2).fill(childColor).frame(width: 4)
+                .padding(.vertical, 12)
+                .accessibilityHidden(true)
+        }
         .background(
             Color(
                 .secondarySystemBackground

@@ -58,6 +58,7 @@ final class YouthProfileService: ObservableObject {
 
         } catch {
 
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
     }

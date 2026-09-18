@@ -18,6 +18,10 @@ struct DiscoverView: View {
     @EnvironmentObject private var authService:
         AuthService
 
+    @StateObject private var profileService = YouthProfileService()
+    @Binding var recommendedOnly: Bool
+    @ScaledMetric private var categoryHeight = 56.0
+
     @State private var searchText = ""
 
     @State private var selectedCategory: String?
@@ -37,13 +41,25 @@ struct DiscoverView: View {
 
             VStack(spacing: 0) {
 
+                if authService.role == "youth" {
+                    Picker("Discovery", selection: $recommendedOnly) {
+                        Text("All Opportunities").tag(false)
+                        Text("Recommended for You").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .padding(.horizontal)
+                    .padding(.vertical, 8)
+                    .accessibilityIdentifier("discoveryMode")
+                }
                 categoryScroller
-
+                    .frame(height: categoryHeight)
+                    .accessibilityIdentifier("categorySelection")
                 Divider()
-
                 content
+                    .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
             .navigationTitle("Discover")
+            .navigationBarTitleDisplayMode(.inline)
             .searchable(
                 text: $searchText,
                 prompt: "Search opportunities"
@@ -87,8 +103,8 @@ struct DiscoverView: View {
             }
             .task {
 
-                await opportunityService
-                    .fetchOpportunities()
+                await opportunityService.fetchOpportunities()
+                if authService.role == "youth" { await profileService.fetchCurrentProfile() }
             }
             .refreshable {
 
@@ -145,7 +161,9 @@ struct DiscoverView: View {
                     "magnifyingglass",
                 description:
                     Text(
-                        "Try changing your search or filters."
+                        recommendedOnly && profileService.currentProfile?.interests.isEmpty != false
+                        ? "Choose interests in your profile to see recommendations."
+                        : "Try changing your search or filters."
                     )
             )
 
@@ -334,6 +352,7 @@ struct DiscoverView: View {
                             )
                     }
                     .buttonStyle(.plain)
+                    .accessibilityIdentifier("category_" + category)
                 }
             }
             .padding(
@@ -356,7 +375,8 @@ struct DiscoverView: View {
             .opportunities
             .filter { opportunity in
 
-                matchesSearch(
+                (!recommendedOnly || opportunity.matchesRecommendation(for: profileService.currentProfile))
+                && matchesSearch(
                     opportunity
                 )
                 &&

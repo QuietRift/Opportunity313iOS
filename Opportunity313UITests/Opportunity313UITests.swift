@@ -88,7 +88,14 @@ final class Opportunity313UITests: XCTestCase {
             let tabs = app.tabBars.firstMatch
             switch role {
             case "youth":
-                tabs.buttons["Discover"].tap()
+                let seeMore = app.buttons["seeMoreRecommendations"]
+                XCTAssertTrue(seeMore.waitForExistence(timeout: 15))
+                seeMore.tap()
+                XCTAssertTrue(app.navigationBars["Discover"].waitForExistence(timeout: 10))
+                XCTAssertTrue(app.segmentedControls["discoveryMode"].buttons["Recommended for You"].isSelected)
+                app.segmentedControls["discoveryMode"].buttons["All Opportunities"].tap()
+                XCTAssertTrue(app.buttons["All"].waitForExistence(timeout: 10))
+                XCTAssertTrue(app.buttons["All"].isHittable)
                 XCTAssertTrue(app.navigationBars["Discover"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
                 let link = app.descendants(matching: .any).matching(identifier: "discoverOpportunityLink").firstMatch
@@ -97,15 +104,29 @@ final class Opportunity313UITests: XCTestCase {
                 XCTAssertTrue(app.navigationBars["Opportunity"].waitForExistence(timeout: 10))
                 tabs.buttons["Saved"].tap()
                 XCTAssertTrue(app.navigationBars["Saved"].waitForExistence(timeout: 10))
+                let savedResolved = NSPredicate { _, _ in
+                    !app.staticTexts["Loading saved opportunities..."].exists &&
+                    !app.staticTexts["Unable to Load Saved Opportunities"].exists
+                }
+                expectation(for: savedResolved, evaluatedWith: nil)
+                waitForExpectations(timeout: 20)
+                tabs.buttons["Discover"].tap()
+                tabs.buttons["Saved"].tap()
+                XCTAssertTrue(app.navigationBars["Saved"].waitForExistence(timeout: 10))
                 tabs.buttons["Calendar"].tap()
                 XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 10))
+                let calendarFilter = app.segmentedControls["calendarFilter"]
+                XCTAssertTrue(calendarFilter.buttons["Saved"].isHittable)
+                calendarFilter.buttons["Saved"].tap()
+                XCTAssertTrue(calendarFilter.buttons["Saved"].isSelected)
+                calendarFilter.buttons["All Opportunities"].tap()
                 let saveError = app.alerts["Unable to Update Saved Opportunity"]
                 if saveError.waitForExistence(timeout: 3) {
                     XCTFail("Calendar could not load saved opportunities.")
                 }
                 tabs.buttons["Profile"].tap()
             case "parent":
-                tabs.buttons["Children"].tap()
+                app.buttons["parentChildrenShortcut"].tap()
                 XCTAssertTrue(app.navigationBars["Children"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
                 let childLink = app.descendants(matching: .any).matching(identifier: "managedChildLink").firstMatch
@@ -113,18 +134,27 @@ final class Opportunity313UITests: XCTestCase {
                 childLink.tap()
                 XCTAssertTrue(app.staticTexts["Managed Youth Profile"].waitForExistence(timeout: 10))
                 tabs.buttons["Discover"].tap()
+                XCTAssertTrue(app.buttons["All"].waitForExistence(timeout: 10))
+                XCTAssertTrue(app.buttons["All"].isHittable)
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
-                tabs.buttons["Calendar"].tap()
+                tabs.buttons["Home"].tap()
+                app.buttons["parentSavedShortcut"].tap()
                 XCTAssertTrue(app.navigationBars["Family Calendar"].waitForExistence(timeout: 10))
+                XCTAssertTrue(app.descendants(matching: .any)["familyCalendarLegend"].waitForExistence(timeout: 15))
+                tabs.buttons["Home"].tap()
+                app.buttons["parentDeadlinesShortcut"].tap()
+                XCTAssertTrue(app.buttons["Deadlines"].isSelected)
                 tabs.buttons["Profile"].tap()
             case "provider":
-                tabs.buttons["Opportunities"].tap()
+                app.buttons["providerOpportunitiesShortcut"].tap()
                 XCTAssertTrue(app.navigationBars["Opportunities"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
-                tabs.buttons["Events"].tap()
+                tabs.buttons["Dashboard"].tap()
+                app.buttons["providerEventsShortcut"].tap()
                 XCTAssertTrue(app.navigationBars["Events"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
-                tabs.buttons["Profile"].tap()
+                tabs.buttons["Dashboard"].tap()
+                app.buttons["providerAccountShortcut"].tap()
             default:
                 XCTAssertTrue(app.navigationBars["Review Queue"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.staticTexts["Review Queue Clear"].waitForExistence(timeout: 15) || app.cells.firstMatch.exists)

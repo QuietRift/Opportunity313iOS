@@ -21,15 +21,18 @@ struct SavedView: View {
 
             Group {
 
-                if opportunityService.isLoading ||
-                    savedService.isLoading {
+                if (opportunityService.isLoading || savedService.isLoading) &&
+                    opportunityService.opportunities.isEmpty {
 
                     ProgressView(
                         "Loading saved opportunities..."
                     )
 
-                } else if let error = opportunityService.errorMessage {
-                    ContentUnavailableView("Unable to Load Saved Opportunities", systemImage: "exclamationmark.triangle", description: Text(error))
+                } else if let error = opportunityService.errorMessage ?? savedService.errorMessage {
+                    VStack(spacing: 16) {
+                        ContentUnavailableView("Unable to Load Saved Opportunities", systemImage: "exclamationmark.triangle", description: Text(error))
+                        Button("Try Again") { Task { await loadData() } }
+                    }
                 } else if savedOpportunities.isEmpty {
 
                     ContentUnavailableView(
@@ -89,25 +92,17 @@ struct SavedView: View {
                 }
             }
             .navigationTitle("Saved")
-            .task {
-
-                await opportunityService
-                    .fetchOpportunities()
-
-                await savedService
-                    .loadSaves()
-            }
-            .refreshable {
-
-                await opportunityService
-                    .fetchOpportunities()
-
-                await savedService
-                    .loadSaves()
-            }
+            .task { await loadData() }
+            .refreshable { await loadData() }
         }
     }
 
+
+    private func loadData() async {
+        async let opportunities: Void = opportunityService.fetchOpportunities()
+        async let saves: Void = savedService.loadSaves()
+        _ = await (opportunities, saves)
+    }
 
     private var savedOpportunities:
         [Opportunity] {

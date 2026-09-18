@@ -42,22 +42,6 @@ struct OpportunityCalendarView: View {
                     .labelsHidden()
 
 
-                    // MARK: Filter
-
-                    Picker(
-                        "Calendar Filter",
-                        selection: $savedOnly
-                    ) {
-
-                        Text("All Opportunities")
-                            .tag(false)
-
-                        Text("Saved")
-                            .tag(true)
-                    }
-                    .pickerStyle(.segmented)
-
-
                     // MARK: Selected Day
 
                     selectedDaySection
@@ -71,6 +55,20 @@ struct OpportunityCalendarView: View {
                     upcomingSection
                 }
                 .padding()
+            }
+            .safeAreaInset(edge: .top) {
+                Picker("Calendar Filter", selection: $savedOnly) {
+                    Text("All Opportunities").tag(false)
+                    Text("Saved").tag(true)
+                }
+                .pickerStyle(.segmented)
+                .padding(.horizontal)
+                .padding(.vertical, 8)
+                .background(.background)
+                .accessibilityIdentifier("calendarFilter")
+            }
+            .onChange(of: savedOnly) {
+                if selectedDayItems.isEmpty, let next = upcomingItems.first { selectedDate = next.date }
             }
             .navigationTitle("Calendar")
             .task {

@@ -81,3 +81,43 @@ rehearsal. No production test opportunity or child remains from validation.
 The current Supabase Swift SDK emits a known initial-session behavior notice.
 Its configuration was preserved; adopting the advertised upcoming session
 semantics would require expiration/refresh verification and is outside this fix.
+
+## User feedback follow-up
+
+The follow-up keeps the MVP scope per the user's explicit choice. Static parent
+and provider dashboard cards are now buttons that select existing tabs. The
+provider Registrations placeholder is replaced by Account; there is no new
+registration system. Parent shortcuts open children, family saved opportunities,
+or a deadlines-only family calendar.
+
+Home recommendations are limited to three and See more selects Discover with
+Recommended for You active. Home and Discover use the same interest/grade match.
+Discovery category controls have an explicit height that scales with text size,
+and the youth recommendations selector sits above them. Parent Discover retains
+category controls without requiring a youth recommendation profile.
+
+Saved loads its opportunity and save queries concurrently, displays cached data
+during reloads, and offers Try Again on load errors. Save load versions prevent
+older overlapping responses from overwriting a newer response or clearing its
+loading state. Canceled opportunity/profile/child/family-save requests do not
+raise user-facing errors.
+
+Youth calendar All Opportunities/Saved controls stay above scrolling content;
+changing filters can advance an empty selected day to the next upcoming item.
+Family calendar cards and child-name badges use per-child colors, with a compact
+legend directly below the date picker. Names remain visible so meaning does not
+rely on color alone. Colors apply to saved plans/deadlines, not registration or
+attendance confirmation. Native graphical calendar day cells are unchanged.
+
+Deferred school/events, invitations, approval and linked interests are recorded
+in `docs/NEXT_PHASE.md`. No Supabase schema, RLS or email workflow was added.
+
+Feedback verification completed at 09:51: six native tests passed, zero failures
+and zero skips. The configured test checked Home See more selecting Recommended
+for You, visible All category controls for youth and parent, repeated Saved
+visits resolving loading, pinned youth calendar filter switching, every parent
+and provider dashboard shortcut, family legend visibility and deadlines
+selection, and admin sign-in/review/account/sign-out. All accounts signed out.
+Result bundle: `Test-MVP Validation Local-2026.09.18_09-48-48--0400.xcresult`.
+The ignored credential scheme was removed again after this run; Xcode is back
+on the credential-free Opportunity313 scheme.

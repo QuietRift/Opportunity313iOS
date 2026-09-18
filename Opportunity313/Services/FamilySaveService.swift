@@ -73,7 +73,7 @@ final class FamilySaveService: ObservableObject {
 
         } catch {
 
-            guard requestGeneration == generation else { return }
+            guard requestGeneration == generation, !Task.isCancelled else { return }
             errorMessage =
                 error.localizedDescription
         }
@@ -184,7 +184,7 @@ final class FamilySaveService: ObservableObject {
 
         } catch {
 
-            guard requestGeneration == generation else { return }
+            guard requestGeneration == generation, !Task.isCancelled else { return }
             errorMessage =
                 error.localizedDescription
         }

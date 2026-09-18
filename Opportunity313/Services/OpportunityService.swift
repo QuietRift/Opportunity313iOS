@@ -22,6 +22,7 @@ final class OpportunityService: ObservableObject {
 
         isLoading = true
         errorMessage = nil
+        defer { isLoading = false }
 
         do {
 
@@ -33,12 +34,13 @@ final class OpportunityService: ObservableObject {
                 .execute()
                 .value
 
+            guard !Task.isCancelled else { return }
             opportunities = response
 
         } catch {
+            guard !Task.isCancelled else { return }
             errorMessage = error.localizedDescription
         }
 
-        isLoading = false
     }
 }

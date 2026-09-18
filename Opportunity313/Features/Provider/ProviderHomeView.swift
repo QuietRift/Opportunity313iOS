@@ -9,6 +9,10 @@ import SwiftUI
 
 struct ProviderHomeView: View {
 
+    var onOpportunities: () -> Void = {}
+    var onEvents: () -> Void = {}
+    var onAccount: () -> Void = {}
+
     var body: some View {
 
         NavigationStack {
@@ -39,28 +43,40 @@ struct ProviderHomeView: View {
                         .foregroundStyle(.secondary)
                     }
 
-                    ProviderDashboardCard(
-                        title: "Opportunities",
-                        description:
-                            "Create and manage youth programs.",
-                        icon:
-                            "list.bullet.rectangle"
-                    )
+                    Button(action: onOpportunities) {
+                        ProviderDashboardCard(
+                            title: "Opportunities",
+                            description:
+                                "Create and manage youth programs.",
+                            icon:
+                                "list.bullet.rectangle"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("providerOpportunitiesShortcut")
 
-                    ProviderDashboardCard(
-                        title: "Events",
-                        description:
-                            "Manage upcoming events and activities.",
-                        icon: "calendar"
-                    )
+                    Button(action: onEvents) {
+                        ProviderDashboardCard(
+                            title: "Events",
+                            description:
+                                "Manage upcoming events and activities.",
+                            icon: "calendar"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("providerEventsShortcut")
 
-                    ProviderDashboardCard(
-                        title: "Registrations",
-                        description:
-                            "Review interest and participation.",
-                        icon:
-                            "person.3.fill"
-                    )
+                    Button(action: onAccount) {
+                        ProviderDashboardCard(
+                            title: "Account",
+                            description:
+                                "View your profile and account settings.",
+                            icon:
+                                "person.crop.circle.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("providerAccountShortcut")
                 }
                 .padding()
             }

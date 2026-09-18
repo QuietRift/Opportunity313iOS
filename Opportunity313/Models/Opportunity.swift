@@ -100,3 +100,15 @@ struct Opportunity: Codable, Identifiable, Hashable {
         case isDemo = "is_demo"
     }
 }
+
+
+extension Opportunity {
+    func matchesRecommendation(for profile: YouthProfile?) -> Bool {
+        guard let profile, profile.interests.contains(where: {
+            $0.localizedCaseInsensitiveCompare(category) == .orderedSame
+        }) else { return false }
+        guard let grade = profile.grade else { return true }
+        return (gradeMin == nil || grade >= gradeMin!) &&
+            (gradeMax == nil || grade <= gradeMax!)
+    }
+}

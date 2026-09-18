@@ -18,6 +18,8 @@ struct HomeView: View {
     @EnvironmentObject var savedService:
         SavedOpportunityService
 
+    var onSeeMore: () -> Void = {}
+
     var body: some View {
 
         NavigationStack {
@@ -178,6 +180,8 @@ struct HomeView: View {
                 }
 
                 Spacer()
+                Button("See more", action: onSeeMore)
+                    .accessibilityIdentifier("seeMoreRecommendations")
             }
 
             if opportunityService.isLoading {
@@ -197,7 +201,7 @@ struct HomeView: View {
             } else {
 
                 ForEach(
-                    recommendedOpportunities.prefix(5)
+                    recommendedOpportunities.prefix(3)
                 ) { opportunity in
 
                     NavigationLink {
@@ -274,34 +278,9 @@ struct HomeView: View {
     private var recommendedOpportunities:
         [Opportunity] {
 
-        guard let profile =
-            profileService.currentProfile else {
-
-            return []
+        opportunityService.opportunities.filter {
+            $0.matchesRecommendation(for: profileService.currentProfile)
         }
-
-        return opportunityService.opportunities
-            .filter { opportunity in
-
-                let interestMatch =
-                    profile.interests.contains(
-                        opportunity.category
-                    )
-
-                let gradeMatch =
-                    matchesGrade(
-                        opportunity,
-                        grade: profile.grade
-                    )
-
-                return interestMatch &&
-                    gradeMatch
-            }
-            .sorted {
-
-                $0.startsAt <
-                $1.startsAt
-            }
     }
 
 
@@ -333,35 +312,6 @@ struct HomeView: View {
 
                 return first < second
             }
-    }
-
-
-    // MARK: - Grade Matching
-
-    private func matchesGrade(
-        _ opportunity: Opportunity,
-        grade: Int?
-    ) -> Bool {
-
-        guard let grade else {
-            return true
-        }
-
-        if let minimum =
-            opportunity.gradeMin,
-           grade < minimum {
-
-            return false
-        }
-
-        if let maximum =
-            opportunity.gradeMax,
-           grade > maximum {
-
-            return false
-        }
-
-        return true
     }
 
 
