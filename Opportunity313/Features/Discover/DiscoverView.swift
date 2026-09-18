@@ -187,25 +187,31 @@ struct DiscoverView: View {
 
                 ForEach(resultCategories, id: \.self) { category in
                     Section {
-                        ForEach(
-                            groupedOpportunities[category] ?? []
-                        ) { opportunity in
-
-                            RecommendationCard(opportunity: opportunity,
-                                               showsCategory: false,
-                                               allowsSave: authService.role == "youth")
-                                .accessibilityIdentifier("discoverOpportunityLink")
-                                .frame(maxWidth: 760)
-                                .frame(maxWidth: .infinity)
-                                .listRowSeparator(.hidden)
-                                .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
-
+                        ScrollView(.horizontal, showsIndicators: false) {
+                            HStack(alignment: .top, spacing: 16) {
+                                ForEach(groupedOpportunities[category] ?? []) { opportunity in
+                                    RecommendationCard(opportunity: opportunity,
+                                                       showsCategory: false,
+                                                       allowsSave: authService.role == "youth")
+                                        .accessibilityIdentifier("discoverOpportunityLink")
+                                        .frame(width: 270)
+                                }
+                            }.padding(.vertical, 2)
                         }
+                        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+                        .listRowSeparator(.hidden)
+                        .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
                     } header: {
                         HStack(spacing: 10) {
                             RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 4, height: 24)
                             Text(category).font(.title3.bold()).foregroundStyle(.primary)
                             Spacer()
+                            NavigationLink {
+                                categoryResults(category)
+                            } label: {
+                                Text("See all").font(.subheadline).foregroundStyle(.orange)
+                            }
+                            .accessibilityLabel("See all \(category) opportunities")
                         }
                         .textCase(nil)
                         .padding(.vertical, 12)
@@ -227,6 +233,23 @@ struct DiscoverView: View {
         }
     }
 
+
+    private func categoryResults(_ category: String) -> some View {
+        ScrollView {
+            LazyVStack(spacing: 16) {
+                ForEach(groupedOpportunities[category] ?? []) { opportunity in
+                    RecommendationCard(opportunity: opportunity,
+                                       showsCategory: false,
+                                       allowsSave: authService.role == "youth")
+                }
+            }
+            .padding(16)
+            .frame(maxWidth: 760)
+            .frame(maxWidth: .infinity)
+        }
+        .navigationTitle(category)
+        .navigationBarTitleDisplayMode(.inline)
+    }
 
     // MARK: - Category Scroller
 
