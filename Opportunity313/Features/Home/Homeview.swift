@@ -165,10 +165,14 @@ struct HomeView: View {
             if upcomingDeadlines.isEmpty {
                 Text("No upcoming deadlines right now.").font(.subheadline).foregroundStyle(.secondary)
             } else {
-                ForEach(upcomingDeadlines.prefix(3)) { opportunity in
-                    NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
-                        DeadlineCard(opportunity: opportunity)
-                    }.buttonStyle(.plain)
+                ScrollView(.horizontal, showsIndicators: false) {
+                    HStack(alignment: .top, spacing: 16) {
+                        ForEach(upcomingDeadlines.prefix(3)) { opportunity in
+                            NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
+                                DeadlineCard(opportunity: opportunity).frame(width: 270)
+                            }.buttonStyle(.plain)
+                        }
+                    }.padding(.bottom, 2)
                 }
             }
         }
@@ -251,55 +255,47 @@ struct RecommendationCard: View {
 // MARK: - Deadline Card
 
 struct DeadlineCard: View {
-
     let opportunity: Opportunity
 
     var body: some View {
+        TimelineView(.periodic(from: .now, by: 60)) { context in
+            let daysRemaining = opportunity.deadline.map {
+                Calendar.current.dateComponents([.day], from: Calendar.current.startOfDay(for: context.date),
+                                                to: Calendar.current.startOfDay(for: $0)).day ?? 0
+            }
+            let urgent = opportunity.deadline.map { $0 > context.date } == true
+                && daysRemaining.map { (0...5).contains($0) } == true
 
-        HStack(spacing: 14) {
-
-            Image(
-                systemName:
-                    "calendar.badge.exclamationmark"
-            )
-            .font(.title2)
-            .frame(width: 32)
-
-            VStack(
-                alignment: .leading,
-                spacing: 4
-            ) {
-
-                Text(opportunity.title)
-                    .font(.headline)
-
-                if let deadline =
-                    opportunity.deadline {
-
-                    Text(
-                        "Apply by \(deadline.formatted(date: .abbreviated, time: .omitted))"
-                    )
-                    .font(.subheadline)
-                    .foregroundStyle(.secondary)
+            VStack(alignment: .leading, spacing: 12) {
+                Text(opportunity.category).font(.caption.weight(.semibold))
+                    .foregroundStyle(urgent ? Color.red : Color.orange)
+                Text(opportunity.title).font(.headline).lineLimit(3)
+                    .frame(height: 64, alignment: .topLeading)
+                if let deadline = opportunity.deadline {
+                    Text("Apply by \(deadline.formatted(date: .abbreviated, time: .omitted))")
+                        .font(.subheadline.weight(.semibold))
+                        .foregroundStyle(urgent ? Color.red : Color.primary)
+                }
+                Text(opportunity.neighborhood ?? opportunity.city)
+                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                HStack {
+                    if let days = daysRemaining {
+                        Text(days <= 0 ? "Due today" : "\(days) \(days == 1 ? "day" : "days") left")
+                            .font(.caption.weight(.semibold))
+                            .foregroundStyle(urgent ? Color.red : Color.secondary)
+                    }
+                    Spacer()
+                    Text(opportunity.isFree ? "FREE" : (Double(opportunity.costCents) / 100).formatted(.currency(code: "USD")))
+                        .font(.subheadline.bold())
                 }
             }
-
-            Spacer()
-
-            Image(
-                systemName: "chevron.right"
-            )
-            .font(.caption)
-            .foregroundStyle(.secondary)
+            .foregroundStyle(.primary)
+            .padding(16)
+            .frame(maxWidth: .infinity, alignment: .leading)
+            .background(urgent ? Color.red.opacity(0.07) : Color(.systemBackground))
+            .clipShape(RoundedRectangle(cornerRadius: 20))
+            .overlay(RoundedRectangle(cornerRadius: 20)
+                .stroke(urgent ? Color.red.opacity(0.4) : Color(.separator).opacity(0.3)))
         }
-        .padding()
-        .background(
-            Color(.secondarySystemBackground)
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 16
-            )
-        )
     }
 }
