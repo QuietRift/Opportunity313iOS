@@ -41,15 +41,17 @@ struct DiscoverView: View {
 
             VStack(spacing: 0) {
 
+                discoverHeader
                 searchBar
 
                 if authService.role == "youth" {
-                    Picker("Discovery", selection: $recommendedOnly) {
-                        Text("All Opportunities").tag(false)
-                        Text("Recommended for You").tag(true)
+                    HStack(spacing: 4) {
+                        discoveryModeButton("All Opportunities", recommended: false)
+                        discoveryModeButton("Recommended for You", recommended: true)
                     }
-                    .pickerStyle(.segmented)
-                    .padding(.horizontal)
+                    .padding(4)
+                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .padding(.horizontal, 16)
                     .padding(.vertical, 8)
                     .accessibilityIdentifier("discoveryMode")
                 }
@@ -60,29 +62,7 @@ struct DiscoverView: View {
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
-            .navigationTitle("Discover")
-            .navigationBarTitleDisplayMode(.inline)
-            .toolbar {
-
-                ToolbarItem(
-                    placement: .topBarTrailing
-                ) {
-
-                    Button {
-
-                        showFilters = true
-
-                    } label: {
-
-                        Image(
-                            systemName:
-                                hasActiveFilters
-                                ? "line.3.horizontal.decrease.circle.fill"
-                                : "line.3.horizontal.decrease.circle"
-                        )
-                    }
-                }
-            }
+            .toolbar(.hidden, for: .navigationBar)
             .sheet(
                 isPresented: $showFilters
             ) {
@@ -108,6 +88,42 @@ struct DiscoverView: View {
     }
 
 
+    private func discoveryModeButton(_ title: String, recommended: Bool) -> some View {
+        Button { recommendedOnly = recommended } label: {
+            Text(title).font(.subheadline.weight(.semibold))
+                .multilineTextAlignment(.center)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .foregroundStyle(recommendedOnly == recommended ? Color.white : Color.primary)
+                .background(recommendedOnly == recommended ? Color.orange : Color.clear,
+                            in: RoundedRectangle(cornerRadius: 12))
+        }
+        .buttonStyle(.plain)
+        .accessibilityAddTraits(recommendedOnly == recommended ? .isSelected : [])
+    }
+
+    private var discoverHeader: some View {
+        HStack {
+            VStack(alignment: .leading, spacing: 4) {
+                Text("Discover").font(.largeTitle.bold())
+                Text("Find what's next in Detroit.")
+                    .font(.subheadline).foregroundStyle(.secondary)
+            }
+            Spacer()
+            Button { showFilters = true } label: {
+                Image(systemName: "slider.horizontal.3")
+                    .font(.title3)
+                    .foregroundStyle(hasActiveFilters ? Color.white : Color.orange)
+                    .frame(width: 48, height: 48)
+                    .background(hasActiveFilters ? Color.orange : Color.orange.opacity(0.08), in: Circle())
+                    .overlay(Circle().stroke(Color.orange.opacity(0.2)))
+            }
+            .accessibilityLabel(hasActiveFilters ? "Filters applied. Edit filters" : "Filter opportunities")
+        }
+        .padding(.horizontal, 20)
+        .padding(.top, 12)
+        .padding(.bottom, 12)
+    }
+
     // Search stays outside the scrolling opportunity list.
     private var searchBar: some View {
         HStack(spacing: 8) {
@@ -127,8 +143,9 @@ struct DiscoverView: View {
                 .accessibilityLabel("Clear search")
             }
         }
-        .padding(12)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 12))
+        .padding(16)
+        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+        .overlay(RoundedRectangle(cornerRadius: 18).stroke(Color(.separator).opacity(0.15)))
         .padding(.horizontal)
         .padding(.vertical, 8)
     }
@@ -252,129 +269,44 @@ struct DiscoverView: View {
     // MARK: - Category Scroller
 
     private var categoryScroller: some View {
-
         ScrollViewReader { proxy in
-        ScrollView(
-            .horizontal,
-            showsIndicators: false
-        ) {
-
-            HStack(spacing: 10) {
-
-                Button {
-
-                    selectedCategory = nil
-
-                } label: {
-
-                    Text("All")
-                        .fixedSize()
-                        .font(.subheadline)
-                        .fontWeight(
-                            selectedCategory == nil
-                            ? .semibold
-                            : .regular
-                        )
-                        .padding(
-                            .horizontal,
-                            14
-                        )
-                        .padding(
-                            .vertical,
-                            8
-                        )
-                        .background(
-                            selectedCategory == nil
-                            ? Color.primary
-                            : Color(
-                                .secondarySystemBackground
-                            )
-                        )
-                        .foregroundStyle(
-                            selectedCategory == nil
-                            ? Color(
-                                .systemBackground
-                            )
-                            : Color.primary
-                        )
-                        .clipShape(
-                            Capsule()
-                        )
-                }
-                .buttonStyle(.plain)
-
-
-                ForEach(
-                    categories,
-                    id: \.self
-                ) { category in
-
-                    Button {
-
-                        selectedCategory =
-                            category
-
-                    } label: {
-
-                        Text(category)
-                            .fixedSize()
-                            .font(
-                                .subheadline
-                            )
-                            .fontWeight(
-                                selectedCategory ==
-                                    category
-                                ? .semibold
-                                : .regular
-                            )
-                            .padding(
-                                .horizontal,
-                                14
-                            )
-                            .padding(
-                                .vertical,
-                                8
-                            )
-                            .background(
-                                selectedCategory ==
-                                    category
-                                ? Color.primary
-                                : Color(
-                                    .secondarySystemBackground
-                                )
-                            )
-                            .foregroundStyle(
-                                selectedCategory ==
-                                    category
-                                ? Color(
-                                    .systemBackground
-                                )
-                                : Color.primary
-                            )
-                            .clipShape(
-                                Capsule()
-                            )
+            ScrollView(.horizontal, showsIndicators: false) {
+                HStack(spacing: 10) {
+                    Button { selectedCategory = nil } label: {
+                        categoryLabel("All", selected: selectedCategory == nil)
                     }
                     .buttonStyle(.plain)
-                    .id(category)
-                    .accessibilityIdentifier("category_" + category)
+                    .accessibilityAddTraits(selectedCategory == nil ? .isSelected : [])
+                    ForEach(categories, id: \.self) { category in
+                        Button { selectedCategory = category } label: {
+                            categoryLabel(category, selected: selectedCategory == category)
+                        }
+                        .buttonStyle(.plain)
+                        .accessibilityAddTraits(selectedCategory == category ? .isSelected : [])
+                        .id(category)
+                        .accessibilityIdentifier("category_" + category)
+                    }
                 }
+                .padding(.horizontal, 16)
+                .frame(height: categoryHeight)
             }
-            .padding(
-                .horizontal
-            )
-            .frame(height: categoryHeight)
-        }
-        .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-        .clipped()
-        .onChange(of: selectedCategory) { _, category in
-            if let category {
-                withAnimation { proxy.scrollTo(category, anchor: .center) }
+            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
+            .clipped()
+            .onChange(of: selectedCategory) { _, category in
+                if let category { withAnimation { proxy.scrollTo(category, anchor: .center) } }
             }
-        }
         }
     }
 
+    private func categoryLabel(_ title: String, selected: Bool) -> some View {
+        Text(title)
+            .font(.subheadline.weight(selected ? .semibold : .medium))
+            .fixedSize()
+            .padding(.horizontal, 16)
+            .padding(.vertical, 10)
+            .foregroundStyle(selected ? Color.white : Color.primary)
+            .background(selected ? Color.orange : Color(.secondarySystemBackground), in: Capsule())
+    }
 
     private var groupedOpportunities: [String: [Opportunity]] {
         Dictionary(grouping: filteredOpportunities, by: \.category)
