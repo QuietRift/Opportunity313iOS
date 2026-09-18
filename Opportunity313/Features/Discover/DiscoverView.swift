@@ -178,6 +178,7 @@ struct DiscoverView: View {
                                     opportunity
                             )
                         }
+                        .accessibilityIdentifier("discoverOpportunityLink")
 
 
                         // Youth accounts can save directly.

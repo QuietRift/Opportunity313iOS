@@ -56,6 +56,7 @@ struct ParentChildrenView: View {
                                 child: child
                             )
                         }
+                        .accessibilityIdentifier("managedChildLink")
                     }
                     .listStyle(.plain)
                 }

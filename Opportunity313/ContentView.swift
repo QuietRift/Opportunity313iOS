@@ -14,6 +14,9 @@ struct ContentView: View {
     @EnvironmentObject private var savedService: SavedOpportunityService
     @EnvironmentObject private var familySaveService: FamilySaveService
 
+    @State private var showSaveError = false
+    @State private var saveErrorMessage = ""
+
     var body: some View {
 
         Group {
@@ -48,17 +51,21 @@ struct ContentView: View {
         .onChange(of: authService.userID) {
             savedService.reset()
             familySaveService.reset()
+            showSaveError = false
         }
         .task {
             await authService.observeAuthState()
         }
-        .alert("Unable to Update Saved Opportunity", isPresented: Binding(
-            get: { savedService.errorMessage != nil || familySaveService.errorMessage != nil },
-            set: { if !$0 { savedService.errorMessage = nil; familySaveService.errorMessage = nil } }
-        )) {
+        .onChange(of: savedService.errorMessage) { _, error in
+            if let error { saveErrorMessage = error; showSaveError = true }
+        }
+        .onChange(of: familySaveService.errorMessage) { _, error in
+            if let error { saveErrorMessage = error; showSaveError = true }
+        }
+        .alert("Unable to Update Saved Opportunity", isPresented: $showSaveError) {
             Button("OK") { savedService.errorMessage = nil; familySaveService.errorMessage = nil }
         } message: {
-            Text(savedService.errorMessage ?? familySaveService.errorMessage ?? "Please try again.")
+            Text(saveErrorMessage)
         }
     }
 }

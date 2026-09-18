@@ -46,7 +46,21 @@ final class Opportunity313UITests: XCTestCase {
             throw XCTSkip("Local demo credentials are not configured.")
         }
         let app = XCUIApplication()
+        addUIInterruptionMonitor(withDescription: "Password saving") { alert in
+            let notNow = alert.buttons["Not Now"]
+            guard notNow.exists else { return false }
+            notNow.tap()
+            return true
+        }
         app.launch()
+        if !app.buttons["Sign In"].waitForExistence(timeout: 5) {
+            let tabs = app.tabBars.firstMatch
+            XCTAssertTrue(tabs.waitForExistence(timeout: 30))
+            let account = tabs.buttons["Account"]
+            if account.exists { account.tap() } else { tabs.buttons["Profile"].tap() }
+            XCTAssertTrue(app.buttons["Sign Out"].waitForExistence(timeout: 10))
+            app.buttons["Sign Out"].tap()
+        }
         for role in ["youth", "parent", "provider", "admin"] {
             guard let email = environment["MVP_" + role.uppercased() + "_EMAIL"] else {
                 XCTFail("Missing local demo account for " + role)
@@ -59,24 +73,44 @@ final class Opportunity313UITests: XCTestCase {
             app.secureTextFields["Password"].typeText(password)
             app.buttons["Sign In"].tap()
             XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), role + " did not reach its dashboard")
+            let passwordPrompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Not Now"]
+            if passwordPrompt.waitForExistence(timeout: 5) { passwordPrompt.tap() }
+            let appPrompt = app.buttons["Not Now"]
+            if appPrompt.waitForExistence(timeout: 5) { appPrompt.tap() }
+            let loadError = app.alerts["Unable to Update Saved Opportunity"]
+            if loadError.waitForExistence(timeout: 5) {
+                XCTFail(loadError.staticTexts.allElementsBoundByIndex.map(\.label).joined(separator: " "))
+            }
+            let evidence = XCTAttachment(screenshot: app.screenshot())
+            evidence.name = role + " dashboard"
+            evidence.lifetime = .keepAlways
+            add(evidence)
             let tabs = app.tabBars.firstMatch
             switch role {
             case "youth":
                 tabs.buttons["Discover"].tap()
                 XCTAssertTrue(app.navigationBars["Discover"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
-                app.cells.firstMatch.tap()
+                let link = app.descendants(matching: .any).matching(identifier: "discoverOpportunityLink").firstMatch
+                XCTAssertTrue(link.waitForExistence(timeout: 10))
+                link.tap()
                 XCTAssertTrue(app.navigationBars["Opportunity"].waitForExistence(timeout: 10))
                 tabs.buttons["Saved"].tap()
                 XCTAssertTrue(app.navigationBars["Saved"].waitForExistence(timeout: 10))
                 tabs.buttons["Calendar"].tap()
                 XCTAssertTrue(app.navigationBars["Calendar"].waitForExistence(timeout: 10))
+                let saveError = app.alerts["Unable to Update Saved Opportunity"]
+                if saveError.waitForExistence(timeout: 3) {
+                    XCTFail("Calendar could not load saved opportunities.")
+                }
                 tabs.buttons["Profile"].tap()
             case "parent":
                 tabs.buttons["Children"].tap()
                 XCTAssertTrue(app.navigationBars["Children"].waitForExistence(timeout: 10))
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))
-                app.cells.firstMatch.tap()
+                let childLink = app.descendants(matching: .any).matching(identifier: "managedChildLink").firstMatch
+                XCTAssertTrue(childLink.waitForExistence(timeout: 10))
+                childLink.tap()
                 XCTAssertTrue(app.staticTexts["Managed Youth Profile"].waitForExistence(timeout: 10))
                 tabs.buttons["Discover"].tap()
                 XCTAssertTrue(app.cells.firstMatch.waitForExistence(timeout: 15))

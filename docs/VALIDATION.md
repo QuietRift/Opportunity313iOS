@@ -22,7 +22,8 @@ No backend schema, RLS policy or production role assignments were changed.
   It uses the authenticated database role and JWT claims, not a bypass of RLS.
   All test writes, including organization verification, were rolled back.
 - Private-key patterns and service-role JWTs were absent from tracked source.
-  The existing app key is publishable. No test passwords were written to files.
+  The existing app key is publishable. The explicitly authorized temporary credential scheme was ignored by Git and
+  deleted after the native rehearsal; no password was committed.
 
 ## Stabilization changes
 
@@ -57,12 +58,25 @@ https://supabase.com/docs/guides/auth/password-security#password-strength-and-le
 
 ## Final native verification
 
-Final Product → Test run completed at 02:54 on the iPhone 18 Pro iOS 27
-Simulator: five tests passed, one optional four-role UI test skipped because
-local credentials were not configured, zero failures. The app and both test
-targets compiled. The four-role UI rehearsal remains pending explicit approval
-for a temporary credential-bearing, ignored local scheme. No such scheme was
-created. No production test opportunity or child remains from validation.
+Final Product → Test run completed at 08:09 on the iPhone 18 Pro iOS 27
+Simulator: six tests passed, zero skips and zero failures. The app and both test
+targets compiled. The configured native rehearsal passed youth discovery/details,
+saved/calendar/profile; parent managed-child details/discovery/family calendar;
+provider opportunities/events/profile; and admin review queue/account. All four
+accounts signed out. The Simulator password-saving prompt was dismissed rather
+than saving credentials. The temporary ignored credential scheme was deleted,
+and Xcode was restored to the credential-free Opportunity313 scheme.
+
+The rehearsal exposed canceled save-load requests presenting errors and an alert
+binding mutating shared published state during view updates. Canceled requests
+now exit quietly and the alert uses local presentation state. The successful
+rehearsal includes the calendar transitions that previously failed. Stable
+accessibility identifiers identify opportunity and managed-child links.
+
+Result bundle: `Test-MVP Validation Local-2026.09.18_08-07-12--0400.xcresult`
+(local Xcode DerivedData, not committed). Native coverage browses existing data;
+write paths are verified by the rollback transaction, not a complete UI write
+rehearsal. No production test opportunity or child remains from validation.
 
 The current Supabase Swift SDK emits a known initial-session behavior notice.
 Its configuration was preserved; adopting the advertised upcoming session
