@@ -9,6 +9,7 @@ import SwiftUI
 
 struct RoleSelectionView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var authService: AuthService
 
     @StateObject private var onboardingService =
@@ -130,14 +131,8 @@ struct RoleSelectionView: View {
                         }
                         .frame(maxWidth: .infinity)
                         .padding()
-                        .background(
-                            selectedRole == nil
-                                ? Color.secondary.opacity(0.3)
-                                : Color.primary
-                        )
-                        .foregroundStyle(
-                            Color(.systemBackground)
-                        )
+                        .background(selectedRole == nil ? Color.secondary.opacity(0.3) : Opportunity313Brand.accent)
+                        .foregroundStyle(.white)
                         .clipShape(
                             RoundedRectangle(
                                 cornerRadius: 16
@@ -151,12 +146,19 @@ struct RoleSelectionView: View {
                 }
                 .padding()
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
         }
+        .opportunity313PageBackground()
     }
 }
 
 
 struct RoleCard: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     let title: String
     let description: String
@@ -199,9 +201,7 @@ struct RoleCard: View {
                 .font(.title2)
             }
             .padding()
-            .background(
-                Color(.secondarySystemBackground)
-            )
+            .background(Opportunity313Brand.surface(for: colorScheme))
             .overlay {
 
                 RoundedRectangle(

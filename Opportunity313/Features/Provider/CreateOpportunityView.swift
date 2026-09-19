@@ -9,6 +9,8 @@ import SwiftUI
 
 struct CreateOpportunityView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss)
     private var dismiss
 
@@ -385,6 +387,11 @@ struct CreateOpportunityView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle(
                 "New Opportunity"
             )
@@ -424,6 +431,7 @@ struct CreateOpportunityView: View {
                 }
             }
         }
+        .opportunity313PageBackground()
     }
 
 

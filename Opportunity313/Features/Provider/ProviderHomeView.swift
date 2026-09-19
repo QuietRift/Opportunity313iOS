@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ProviderHomeView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var onOpportunities: () -> Void = {}
     var onEvents: () -> Void = {}
     var onAccount: () -> Void = {}
@@ -82,12 +84,19 @@ struct ProviderHomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
         }
+        .opportunity313PageBackground()
     }
 }
 
 
 struct ProviderDashboardCard: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     let title: String
     let description: String
@@ -99,7 +108,9 @@ struct ProviderDashboardCard: View {
 
             Image(systemName: icon)
                 .font(.title2)
-                .frame(width: 38)
+                .foregroundStyle(Opportunity313Brand.accent)
+                .frame(width: 44, height: 44)
+                .background(Opportunity313Brand.accent.opacity(0.12), in: Circle())
 
             VStack(
                 alignment: .leading,
@@ -120,13 +131,15 @@ struct ProviderDashboardCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(
-            Color(.secondarySystemBackground)
-        )
+        .background(Opportunity313Brand.surface(for: colorScheme))
         .clipShape(
             RoundedRectangle(
                 cornerRadius: 18
             )
         )
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Opportunity313Brand.accent.opacity(0.16))
+        }
     }
 }

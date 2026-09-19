@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ParentHomeView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var onChildren: () -> Void = {}
     var onSaved: () -> Void = {}
     var onDeadlines: () -> Void = {}
@@ -24,24 +26,7 @@ struct ParentHomeView: View {
                     spacing: 24
                 ) {
 
-                    VStack(
-                        alignment: .leading,
-                        spacing: 6
-                    ) {
-
-                        Text("Opportunity313")
-                            .font(.subheadline)
-                            .foregroundStyle(.secondary)
-
-                        Text("Parent Dashboard")
-                            .font(.largeTitle)
-                            .fontWeight(.bold)
-
-                        Text(
-                            "Help your family discover what's next."
-                        )
-                        .foregroundStyle(.secondary)
-                    }
+                    dashboardHeader
 
                     Button(action: onChildren) {
                         ParentDashboardCard(
@@ -81,12 +66,41 @@ struct ParentHomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
+            .background(Opportunity313Brand.canvas(for: colorScheme))
+            .toolbar(.hidden, for: .navigationBar)
+        }
+    }
+
+    private var dashboardHeader: some View {
+        VStack(alignment: .leading, spacing: 10) {
+            Text("BUILT FOR DETROIT FAMILIES")
+                .font(.caption.weight(.bold))
+                .tracking(1.1)
+                .foregroundStyle(Opportunity313Brand.accent)
+
+            Text("Parent Dashboard")
+                .font(.largeTitle.bold())
+                .foregroundStyle(.white)
+
+            Text("Help your family discover what's next.")
+                .font(.body)
+                .foregroundStyle(.white.opacity(0.82))
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding(24)
+        .background(Opportunity313Brand.heroGradient)
+        .clipShape(RoundedRectangle(cornerRadius: 24))
+        .overlay {
+            RoundedRectangle(cornerRadius: 24)
+                .stroke(Opportunity313Brand.accent.opacity(0.35))
         }
     }
 }
 
 
 struct ParentDashboardCard: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     let title: String
     let description: String
@@ -98,7 +112,9 @@ struct ParentDashboardCard: View {
 
             Image(systemName: icon)
                 .font(.title2)
-                .frame(width: 38)
+                .foregroundStyle(Opportunity313Brand.accent)
+                .frame(width: 44, height: 44)
+                .background(Opportunity313Brand.accent.opacity(0.12), in: Circle())
 
             VStack(
                 alignment: .leading,
@@ -119,13 +135,12 @@ struct ParentDashboardCard: View {
                 .foregroundStyle(.secondary)
         }
         .padding()
-        .background(
-            Color(.secondarySystemBackground)
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+        .background(Opportunity313Brand.surface(for: colorScheme))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Opportunity313Brand.accent.opacity(0.16))
+        }
+        .shadow(color: Opportunity313Brand.deepBlue.opacity(0.08), radius: 12, y: 6)
     }
 }

@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct AdminReviewView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @StateObject private var adminService = AdminService()
     @State private var selectedOpportunityID: UUID?
 
@@ -32,8 +33,13 @@ struct AdminReviewView: View {
                         }
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Review Queue")
             .navigationSplitViewColumnWidth(min: 300, ideal: 360, max: 440)
             .toolbar {
@@ -53,6 +59,7 @@ struct AdminReviewView: View {
                 ContentUnavailableView("Select a Submission", systemImage: "doc.text.magnifyingglass", description: Text("Choose an opportunity from the review queue to inspect its details."))
             }
         }
+        .opportunity313PageBackground()
         .navigationSplitViewStyle(.balanced)
         .task { await adminService.fetchPendingOpportunities() }
         .onChange(of: adminService.pendingOpportunities.map(\.id)) { _, ids in

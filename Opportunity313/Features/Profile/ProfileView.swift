@@ -10,6 +10,8 @@ import SwiftUI
 struct ProfileView: View {
 
     @EnvironmentObject var authService: AuthService
+    @Environment(\.colorScheme) private var colorScheme
+    @AppStorage("opportunity313.colorway") private var colorway = AppColorway.light.rawValue
 
     @StateObject private var profileService =
         YouthProfileService()
@@ -40,10 +42,13 @@ struct ProfileView: View {
 
                             interestsSection(profile)
 
+                            appearanceSection
+
                             accountSection
                         }
                         .padding()
                     }
+                    .background(Opportunity313Brand.canvas(for: colorScheme))
 
                 } else {
 
@@ -56,6 +61,10 @@ struct ProfileView: View {
                     )
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Profile")
             .toolbar {
 
@@ -92,6 +101,7 @@ struct ProfileView: View {
                 }
             }
         }
+        .opportunity313PageBackground()
     }
 
 
@@ -160,9 +170,7 @@ struct ProfileView: View {
             alignment: .leading
         )
         .padding()
-        .background(
-            Color(.secondarySystemBackground)
-        )
+        .background(Opportunity313Brand.surface(for: colorScheme))
         .clipShape(
             RoundedRectangle(
                 cornerRadius: 18
@@ -243,6 +251,37 @@ struct ProfileView: View {
             maxWidth: .infinity,
             alignment: .leading
         )
+    }
+
+
+    // MARK: - Account
+
+    private var appearanceSection: some View {
+        VStack(alignment: .leading, spacing: 14) {
+            Text("Appearance")
+                .font(.title2.bold())
+
+            Text("Choose the Opportunity313 colorway you want to use. This setting stays independent from your phone.")
+                .font(.subheadline)
+                .foregroundStyle(.secondary)
+
+            Picker("Colorway", selection: $colorway) {
+                ForEach(AppColorway.allCases) { option in
+                    Label(option.title, systemImage: option.symbol)
+                        .tag(option.rawValue)
+                }
+            }
+            .pickerStyle(.segmented)
+            .accessibilityHint("Switches the app between the light and dark Opportunity313 colorways")
+        }
+        .frame(maxWidth: .infinity, alignment: .leading)
+        .padding()
+        .background(Opportunity313Brand.surface(for: colorScheme))
+        .clipShape(RoundedRectangle(cornerRadius: 18))
+        .overlay {
+            RoundedRectangle(cornerRadius: 18)
+                .stroke(Opportunity313Brand.accent.opacity(0.18), lineWidth: 1)
+        }
     }
 
 

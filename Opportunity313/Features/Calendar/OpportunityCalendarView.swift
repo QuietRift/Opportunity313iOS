@@ -9,6 +9,8 @@ import SwiftUI
 
 struct OpportunityCalendarView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @StateObject private var opportunityService =
         OpportunityService()
 
@@ -26,6 +28,13 @@ struct OpportunityCalendarView: View {
             ScrollView {
 
                 VStack(alignment: .leading, spacing: 24) {
+
+                    Picker("Calendar Filter", selection: $savedOnly) {
+                        Text("All Opportunities").tag(false)
+                        Text("Saved").tag(true)
+                    }
+                    .pickerStyle(.segmented)
+                    .accessibilityIdentifier("calendarFilter")
 
                     if let error = opportunityService.errorMessage {
                         ContentUnavailableView("Unable to Load Calendar", systemImage: "exclamationmark.triangle", description: Text(error))
@@ -60,21 +69,15 @@ struct OpportunityCalendarView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
-            .safeAreaInset(edge: .top) {
-                Picker("Calendar Filter", selection: $savedOnly) {
-                    Text("All Opportunities").tag(false)
-                    Text("Saved").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.background)
-                .accessibilityIdentifier("calendarFilter")
-            }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .onChange(of: savedOnly) {
                 if selectedDayItems.isEmpty, let next = upcomingItems.first { selectedDate = next.date }
             }
             .navigationTitle("Calendar")
+            .navigationBarTitleDisplayMode(.inline)
             .task {
 
                 await opportunityService
@@ -94,6 +97,7 @@ struct OpportunityCalendarView: View {
                     .loadSaves()
             }
         }
+        .opportunity313PageBackground()
     }
 
 
