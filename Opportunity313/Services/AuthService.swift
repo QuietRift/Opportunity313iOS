@@ -16,6 +16,8 @@ final class AuthService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    @Published var displayName = ""
+    @Published var email = ""
     @Published var role: String?
     @Published var needsOnboarding = false
     @Published var hasYouthProfile = false
@@ -36,6 +38,8 @@ final class AuthService: ObservableObject {
 
             let shouldLoadAccount = userID != session?.user.id || role == nil
             userID = session?.user.id
+            displayName = session?.user.userMetadata["full_name"]?.stringValue ?? ""
+            email = session?.user.email ?? ""
             isAuthenticated = session != nil
 
             if session != nil {
@@ -332,6 +336,13 @@ final class AuthService: ObservableObject {
         await loadUserRole()
     }
 
+
+    func updateDisplayName(_ name: String) async throws {
+        let user = try await supabase.auth.update(user: UserAttributes(
+            data: ["full_name": .string(name.trimmingCharacters(in: .whitespacesAndNewlines))]
+        ))
+        displayName = user.userMetadata["full_name"]?.stringValue ?? ""
+    }
 
     // MARK: - Clear Error
 

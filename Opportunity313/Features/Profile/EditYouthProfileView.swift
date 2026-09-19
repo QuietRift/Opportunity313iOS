@@ -9,11 +9,17 @@ import SwiftUI
 
 struct EditYouthProfileView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss)
     private var dismiss
 
     @ObservedObject var profileService:
         YouthProfileService
+
+    var saveManagedProfile: ((String, String, Int?, [String], [String]) async throws -> Void)?
+    @State private var isSaving = false
+    @State private var saveError: String?
 
     let profile: YouthProfile
 
@@ -51,8 +57,10 @@ struct EditYouthProfileView: View {
     init(
         profile: YouthProfile,
         profileService:
-            YouthProfileService
+            YouthProfileService,
+        saveManagedProfile: ((String, String, Int?, [String], [String]) async throws -> Void)? = nil
     ) {
+        self.saveManagedProfile = saveManagedProfile
 
         self.profile = profile
         self.profileService =
@@ -220,7 +228,7 @@ struct EditYouthProfileView: View {
 
 
                 if let error =
-                    profileService.errorMessage {
+                    saveError ?? profileService.errorMessage {
 
                     Section {
 
@@ -229,6 +237,11 @@ struct EditYouthProfileView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(
                 .inline
@@ -242,7 +255,7 @@ struct EditYouthProfileView: View {
 
                     Button("Cancel") {
                         dismiss()
-                    }
+                    }.disabled(isSaving)
                 }
 
                 ToolbarItem(
@@ -258,11 +271,13 @@ struct EditYouthProfileView: View {
                     }
                     .disabled(
                         !formIsValid ||
-                        profileService.isLoading
+                        profileService.isLoading || isSaving
                     )
                 }
             }
         }
+        .interactiveDismissDisabled(isSaving)
+        .opportunity313PageBackground()
     }
 
 
@@ -303,7 +318,15 @@ struct EditYouthProfileView: View {
                     !$0.isEmpty
                 }
 
+        isSaving = true
+        saveError = nil
+        defer { isSaving = false }
         do {
+            if let saveManagedProfile {
+                try await saveManagedProfile(firstName.trimmingCharacters(in: .whitespacesAndNewlines), ageBand, grade, selectedInterests.sorted(), accessibility)
+                dismiss()
+                return
+            }
 
             try await profileService
                 .updateProfile(
@@ -327,7 +350,7 @@ struct EditYouthProfileView: View {
             dismiss()
 
         } catch {
-            // Service displays error.
+            saveError = error.localizedDescription
         }
     }
 

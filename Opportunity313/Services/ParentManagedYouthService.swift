@@ -18,6 +18,7 @@ extension Notification.Name {
 @MainActor
 final class ParentManagedYouthService: ObservableObject {
 
+    @Published var relationships: [UUID: String] = [:]
     @Published var children: [YouthProfile] = []
     @Published var isLoading = false
     @Published var errorMessage: String?
@@ -46,19 +47,23 @@ final class ParentManagedYouthService: ObservableObject {
             struct RelationshipRow: Decodable {
 
                 let youthProfileId: UUID
+                let relationship: String
 
                 enum CodingKeys: String, CodingKey {
                     case youthProfileId = "youth_profile_id"
+                    case relationship
                 }
             }
 
             let relationships: [RelationshipRow] = try await supabase
                 .from("guardian_relationships")
-                .select("youth_profile_id")
+                .select("youth_profile_id, relationship")
                 .eq("guardian_user_id", value: userID)
                 .eq("status", value: "active")
                 .execute()
                 .value
+
+            self.relationships = Dictionary(relationships.map { ($0.youthProfileId, $0.relationship) }, uniquingKeysWith: { first, _ in first })
 
             let ids = relationships.map {
                 $0.youthProfileId
@@ -221,6 +226,23 @@ final class ParentManagedYouthService: ObservableObject {
         }
     }
 
+
+    func updateChild(_ child: YouthProfile, firstName: String, ageBand: String,
+                     grade: Int?, interests: [String], accessibility: [String]) async throws {
+        guard children.contains(where: { $0.id == child.id }) else {
+            throw YouthProfileError.notAuthenticated
+        }
+        let update = UpdateYouthProfile(firstName: firstName, ageBand: ageBand, grade: grade,
+                                        gender: child.gender, interests: interests,
+                                        accessibilityPreferences: accessibility)
+        // RLS enforces the active guardian relationship; require a returned row.
+        let updated: YouthProfile = try await supabase.from("youth_profiles")
+            .update(update).eq("id", value: child.id).select().single().execute().value
+        if let index = children.firstIndex(where: { $0.id == updated.id }) {
+            children[index] = updated
+        }
+        NotificationCenter.default.post(name: .managedYouthProfileDidChange, object: nil)
+    }
 
     // MARK: - Clear Error
 

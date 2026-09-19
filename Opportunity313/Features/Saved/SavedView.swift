@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SavedView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @EnvironmentObject var savedService:
         SavedOpportunityService
 
@@ -87,14 +89,21 @@ struct SavedView: View {
                                 )
                             }
                         }
+                        .listRowBackground(Opportunity313Brand.surface(for: colorScheme))
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Saved")
             .task { await loadData() }
             .refreshable { await loadData() }
         }
+        .opportunity313PageBackground()
     }
 
 

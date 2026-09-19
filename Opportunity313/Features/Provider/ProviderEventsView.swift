@@ -1,6 +1,7 @@
 import SwiftUI
 
 struct ProviderEventsView: View {
+    @Environment(\.colorScheme) private var colorScheme
     let organization: Organization
     @StateObject private var opportunityService = ProviderOpportunityService()
 
@@ -27,12 +28,19 @@ struct ProviderEventsView: View {
                             ProviderOpportunityRow(opportunity: opportunity)
                         }
                     }
+                    .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Events")
             .task { await loadEvents() }
             .refreshable { await loadEvents() }
         }
+        .opportunity313PageBackground()
     }
 
     private func loadEvents() async {

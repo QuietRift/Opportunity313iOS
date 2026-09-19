@@ -9,11 +9,37 @@ import SwiftUI
 
 struct DiscoverView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
+    private let categoryCatalog = [
+        "Academic Support",
+        "Arts",
+        "Career Exploration",
+        "Career Readiness",
+        "College Readiness",
+        "Culinary",
+        "Entrepreneurship",
+        "Film",
+        "Financial Literacy",
+        "Health",
+        "Leadership",
+        "Media",
+        "Music",
+        "Science",
+        "Skilled Trades",
+        "Sports",
+        "Sustainability",
+        "Technology"
+    ]
+
     @StateObject private var opportunityService =
         OpportunityService()
 
     @EnvironmentObject private var savedService:
         SavedOpportunityService
+
+    @EnvironmentObject private var familySaveService:
+        FamilySaveService
 
     @EnvironmentObject private var authService:
         AuthService
@@ -21,8 +47,6 @@ struct DiscoverView: View {
     @StateObject private var profileService = YouthProfileService()
     @StateObject private var childService = ParentManagedYouthService()
     @Binding var recommendedOnly: Bool
-    @ScaledMetric private var categoryHeight = 50.0
-    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var searchText = ""
 
@@ -54,18 +78,21 @@ struct DiscoverView: View {
                         discoveryModeButton("Recommended for You", recommended: true)
                     }
                     .padding(4)
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 16))
+                    .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 16))
                     .padding(.horizontal, 16)
                     .padding(.vertical, 4)
                     .accessibilityIdentifier("discoveryMode")
                 }
                 categoryScroller
-                    .frame(height: categoryHeight)
                     .accessibilityIdentifier("categorySelection")
                 Divider()
                 content
                     .frame(maxWidth: .infinity, maxHeight: .infinity)
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .toolbar(.hidden, for: .navigationBar)
             .sheet(
                 isPresented: $showFilters
@@ -118,6 +145,7 @@ struct DiscoverView: View {
         } else {
             selectedChildID = childService.children.first?.id
         }
+        await familySaveService.loadSaves(for: childService.children.map(\.id))
     }
 
     @ViewBuilder
@@ -203,7 +231,7 @@ struct DiscoverView: View {
         .padding(.horizontal, 12)
         .padding(.vertical, 10)
         .frame(minHeight: 44)
-        .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+        .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 14))
         .overlay(RoundedRectangle(cornerRadius: 14).stroke(Color(.separator).opacity(0.15)))
         .padding(.horizontal)
         .padding(.vertical, 4)
@@ -267,11 +295,13 @@ struct DiscoverView: View {
                             ForEach(groupedOpportunities[category] ?? []) { opportunity in
                                 RecommendationCard(opportunity: opportunity,
                                                    showsCategory: false,
-                                                   allowsSave: authService.role == "youth")
+                                                   allowsSave: authService.role == "youth" || selectedChildID != nil,
+                                                   managedYouthProfileID: selectedChildID)
                                     .accessibilityIdentifier("discoverOpportunityLink")
                                     .frame(maxWidth: 760)
                                     .frame(maxWidth: .infinity)
                                     .listRowSeparator(.hidden)
+                                    .listRowBackground(Opportunity313Brand.surface(for: colorScheme))
                                     .listRowInsets(EdgeInsets(top: 8, leading: 16, bottom: 8, trailing: 16))
                             }
                         } else {
@@ -280,7 +310,8 @@ struct DiscoverView: View {
                                 ForEach(groupedOpportunities[category] ?? []) { opportunity in
                                     RecommendationCard(opportunity: opportunity,
                                                        showsCategory: false,
-                                                       allowsSave: authService.role == "youth")
+                                                       allowsSave: authService.role == "youth" || selectedChildID != nil,
+                                                       managedYouthProfileID: selectedChildID)
                                         .accessibilityIdentifier("discoverOpportunityLink")
                                         .frame(width: 270)
                                 }
@@ -288,6 +319,7 @@ struct DiscoverView: View {
                         }
                         .scrollBounceBehavior(.basedOnSize, axes: .vertical)
                         .listRowSeparator(.hidden)
+                        .listRowBackground(Opportunity313Brand.canvas(for: colorScheme))
                         .listRowInsets(EdgeInsets(top: 0, leading: 16, bottom: 16, trailing: 16))
                         }
                     } header: {
@@ -305,11 +337,13 @@ struct DiscoverView: View {
                             }
                         }
                         .textCase(nil)
-                        .padding(.vertical, 12)
+                        .padding(.vertical, 6)
                     }
                 }
             }
             .listStyle(.plain)
+            .scrollContentBackground(.hidden)
+            .contentMargins(.top, 0, for: .scrollContent)
             .refreshable {
 
                 await opportunityService
@@ -328,53 +362,57 @@ struct DiscoverView: View {
     // MARK: - Category Scroller
 
     private var categoryScroller: some View {
-        ScrollViewReader { proxy in
-            ScrollView(.horizontal, showsIndicators: false) {
-                HStack(spacing: 10) {
-                    Button { selectedCategory = nil } label: {
-                        categoryLabel("All", selected: selectedCategory == nil)
+        ScrollView(.horizontal, showsIndicators: false) {
+            HStack(spacing: 6) {
+                Button { selectedCategory = nil } label: {
+                    categoryLabel("All", selected: selectedCategory == nil)
+                }
+                .buttonStyle(.plain)
+                .accessibilityAddTraits(selectedCategory == nil ? .isSelected : [])
+
+                ForEach(categories, id: \.self) { category in
+                    Button { selectedCategory = category } label: {
+                        categoryLabel(category, selected: selectedCategory == category)
                     }
                     .buttonStyle(.plain)
-                    .accessibilityAddTraits(selectedCategory == nil ? .isSelected : [])
-                    ForEach(categories, id: \.self) { category in
-                        Button { selectedCategory = category } label: {
-                            categoryLabel(category, selected: selectedCategory == category)
-                        }
-                        .buttonStyle(.plain)
-                        .accessibilityAddTraits(selectedCategory == category ? .isSelected : [])
-                        .id(category)
-                        .accessibilityIdentifier("category_" + category)
-                    }
-                }
-                .padding(.horizontal, 16)
-                .frame(height: categoryHeight)
-            }
-            .scrollBounceBehavior(.basedOnSize, axes: .vertical)
-            .clipped()
-            .onChange(of: selectedCategory) { _, category in
-                if let category {
-                    if reduceMotion {
-                        proxy.scrollTo(category, anchor: .center)
-                    } else {
-                        withAnimation { proxy.scrollTo(category, anchor: .center) }
-                    }
+                    .accessibilityAddTraits(selectedCategory == category ? .isSelected : [])
+                    .accessibilityIdentifier("category_" + category)
                 }
             }
+            .fixedSize(horizontal: true, vertical: false)
+            .frame(height: 44)
+            .padding(.horizontal, 12)
         }
+        .scrollBounceBehavior(.basedOnSize, axes: .horizontal)
+        .frame(height: 44)
+        .clipped()
     }
 
     private func categoryLabel(_ title: String, selected: Bool) -> some View {
         Text(title)
             .font(.subheadline.weight(selected ? .semibold : .medium))
             .fixedSize()
-            .padding(.horizontal, 16)
-            .padding(.vertical, 10)
+            .padding(.horizontal, 12)
+            .padding(.vertical, 8)
             .foregroundStyle(selected ? Color.white : Color.primary)
-            .background(selected ? Opportunity313Brand.accent : Color(.secondarySystemBackground), in: Capsule())
+            .background(selected ? Opportunity313Brand.accent : Opportunity313Brand.surface(for: colorScheme), in: Capsule())
     }
 
     private var groupedOpportunities: [String: [Opportunity]] {
         Dictionary(grouping: filteredOpportunities, by: \.category)
+    }
+
+    private var categories: [String] {
+        let catalog = Set(categoryCatalog)
+        let additionalCategories = Set(
+            opportunityService.opportunities.map(\.category)
+        )
+        .subtracting(catalog)
+        .sorted {
+            $0.localizedStandardCompare($1) == .orderedAscending
+        }
+
+        return categoryCatalog + additionalCategories
     }
 
     private var resultCategories: [String] {
@@ -590,23 +628,6 @@ struct DiscoverView: View {
             .localizedCaseInsensitiveContains(
                 "no transportation"
             )
-    }
-
-
-    // MARK: - Categories
-
-    private var categories: [String] {
-
-        Array(
-            Set(
-                opportunityService
-                    .opportunities
-                    .map {
-                        $0.category
-                    }
-            )
-        )
-        .sorted()
     }
 
 

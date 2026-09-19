@@ -48,7 +48,13 @@ removing it, so an existing session no longer satisfies youth-profile RLS.
 - Admin detailed review, provider verification, approval and publication.
 
 Provider Events displays the schedule of the organization's submitted
-opportunities. It does not introduce a separate event or ticketing product.
+opportunities. As of September 22, Event Tickets also connects the existing
+athletics event backend to the native app: free reservations, QR confirmations,
+owner ticket history/cancellation, and authorized event-staff check-in. Open
+Profile → Event Tickets as a parent or youth. Athletics staff use Events; admins
+use Check-In. Existing demo events stay explicitly labeled.
+
+See [ticketing implementation and validation](docs/TICKETING.md).
 
 ## Run
 

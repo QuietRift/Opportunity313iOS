@@ -400,6 +400,8 @@
 				DEVELOPMENT_TEAM = QCXT66T4DU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan event tickets and photograph a school ID to request school verification. ID images are not saved.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find bus directions from your current location to an event.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
@@ -431,6 +433,8 @@
 				DEVELOPMENT_TEAM = QCXT66T4DU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				INFOPLIST_KEY_NSCameraUsageDescription = "Scan event tickets and photograph a school ID to request school verification. ID images are not saved.";
+				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find bus directions from your current location to an event.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
 				INFOPLIST_KEY_UILaunchScreen_Generation = YES;
