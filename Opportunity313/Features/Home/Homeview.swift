@@ -18,7 +18,7 @@ private struct OpportunityCardSurface: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(
                         colorScheme == .dark
-                            ? Color.orange.opacity(0.28)
+                            ? Opportunity313Brand.accent.opacity(0.28)
                             : Color(.separator).opacity(0.30),
                         lineWidth: colorScheme == .dark ? 1.25 : 1
                     )
@@ -48,7 +48,7 @@ struct HomeView: View {
     var onSeeMore: () -> Void = {}
     var onDiscover: () -> Void = {}
     var onProfile: () -> Void = {}
-    private let accent = Color.orange
+    private let accent = Opportunity313Brand.accent
 
     var body: some View {
         NavigationStack {
@@ -69,6 +69,7 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 24)
             }
+            .background(Opportunity313Brand.warmSurface.opacity(0.34))
             .toolbar(.hidden, for: .navigationBar)
             .task { await reload() }
             .refreshable { await reload() }
@@ -282,7 +283,7 @@ struct RecommendationCard: View {
                     Task { await savedService.toggleSave(opportunityID: opportunity.id) }
                 } label: {
                     Image(systemName: savedService.isSaved(opportunity.id) ? "bookmark.fill" : "bookmark")
-                        .foregroundStyle(.orange).frame(width: 44, height: 44)
+                        .foregroundStyle(Opportunity313Brand.accent).frame(width: 44, height: 44)
                         .background(.background, in: Circle())
                 }.buttonStyle(.plain).padding(10)
                     .accessibilityLabel(savedService.isSaved(opportunity.id) ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
@@ -291,7 +292,7 @@ struct RecommendationCard: View {
             NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     if showsCategory {
-                        Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                        Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(Opportunity313Brand.accent)
                     }
                     Text(opportunity.title)
                         .font(.headline)
@@ -331,7 +332,7 @@ struct DeadlineCard: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text(opportunity.category).font(.caption.weight(.semibold))
-                    .foregroundStyle(urgent ? Color.red : Color.orange)
+                    .foregroundStyle(urgent ? Color.red : Opportunity313Brand.accent)
                 Text(opportunity.title)
                     .font(.headline)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
