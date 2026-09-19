@@ -1,0 +1,237 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <meta name="theme-color" content="#f36f21" />
+    <meta
+      name="description"
+      content="Opportunity313 connects Detroit youth and families with reviewed, age-appropriate opportunities."
+    />
+    <link rel="preconnect" href="https://fonts.googleapis.com" />
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin />
+    <link
+      href="https://fonts.googleapis.com/css2?family=DM+Sans:wght@400;500;600;700&amp;family=Manrope:wght@600;700;800&amp;display=swap"
+      rel="stylesheet"
+    />
+    <link
+      rel="icon"
+      type="image/svg+xml"
+      href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'%3E%3Crect width='64' height='64' rx='16' fill='%23f36f21'/%3E%3Cpath d='M18 42V22h16c8 0 13 4 13 10s-5 10-13 10H18Zm10-7h6c3 0 5-1 5-3s-2-3-5-3h-6v6Z' fill='white'/%3E%3C/svg%3E"
+    />
+    <link rel="stylesheet" href="/styles.css" />
+    <script src="/script.js" defer></script>
+    <title>Opportunity313 — Detroit opportunities, made personal</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#main">Skip to main content</a>
+    <header class="site-header">
+      <a class="brand" href="#top" aria-label="Opportunity313 home">
+        <span class="brand-mark" aria-hidden="true">O</span>
+        <span>Opportunity<span>313</span></span>
+      </a>
+      <nav aria-label="Primary navigation">
+        <a href="#experience">Experience</a>
+        <a href="#families">For families</a>
+        <a href="#accessibility">Accessibility</a>
+        <a class="nav-cta" href="https://github.com/QuietRift/Opportunity313iOS">View on GitHub</a>
+      </nav>
+      <button class="menu-button" type="button" aria-expanded="false" aria-controls="mobile-nav">
+        <span class="sr-only">Open navigation</span>
+        <span></span><span></span><span></span>
+      </button>
+    </header>
+    <nav class="mobile-nav" id="mobile-nav" aria-label="Mobile navigation" hidden>
+      <a href="#experience">Experience</a>
+      <a href="#families">For families</a>
+      <a href="#accessibility">Accessibility</a>
+      <a href="https://github.com/QuietRift/Opportunity313iOS">View on GitHub</a>
+    </nav>
+
+    <main id="main">
+      <section class="hero" id="top">
+        <div class="hero-copy reveal">
+          <p class="eyebrow"><span></span> Built for Detroit families</p>
+          <h1>The right opportunity should find the right young person.</h1>
+          <p class="hero-lede">
+            Opportunity313 brings trusted programs into one clear, personalized experience—matched by age,
+            interests, grade, and eligibility.
+          </p>
+          <div class="hero-actions">
+            <a class="button primary" href="#experience">Explore the experience</a>
+            <a class="button secondary" href="https://github.com/QuietRift/Opportunity313iOS">
+              See the project <span aria-hidden="true">↗</span>
+            </a>
+          </div>
+          <dl class="hero-facts" aria-label="Product highlights">
+            <div><dt>Under 18</dt><dd>Parent-managed profiles</dd></div>
+            <div><dt>18–24</dt><dd>Independent accounts</dd></div>
+            <div><dt>One place</dt><dd>Reviewed opportunities</dd></div>
+          </dl>
+        </div>
+
+        <div class="hero-visual reveal" aria-label="Preview of the Opportunity313 app">
+          <div class="orbit orbit-one" aria-hidden="true"></div>
+          <div class="orbit orbit-two" aria-hidden="true"></div>
+          <div class="phone-shell">
+            <div class="phone-top" aria-hidden="true"></div>
+            <div class="app-screen">
+              <div class="app-header">
+                <div class="avatar" aria-hidden="true">M</div>
+                <div><small>Welcome back</small><strong>Maya</strong></div>
+                <button type="button" aria-label="View notifications">●</button>
+              </div>
+              <div class="featured-card">
+                <img src="/images/technology.jpg" alt="Young person learning with a laptop" />
+                <div>
+                  <small>DISCOVER OPPORTUNITIES</small>
+                  <strong>Build what’s next in Detroit.</strong>
+                  <span>Explore technology →</span>
+                </div>
+              </div>
+              <div class="app-section-title"><strong>Recommended for You</strong><span>See more</span></div>
+              <article class="mini-card">
+                <img src="/images/arts.jpg" alt="Colorful art materials" />
+                <div><small>ARTS · FREE</small><strong>Creative Studio Lab</strong><span>Detroit · Ages 12–15</span></div>
+              </article>
+              <article class="mini-card compact">
+                <span class="calendar-icon" aria-hidden="true">24</span>
+                <div><small>APPLICATION DEADLINE</small><strong>Future Builders Workshop</strong></div>
+              </article>
+              <div class="tab-bar" aria-hidden="true"><b>⌂</b><span>⌕</span><span>♡</span><span>▣</span></div>
+            </div>
+          </div>
+          <div class="floating-note note-one"><b>✓</b><span>Matched to age<br /><small>and interests</small></span></div>
+          <div class="floating-note note-two"><b>3</b><span>Saved for<br /><small>this profile</small></span></div>
+        </div>
+      </section>
+
+      <section class="trust-strip" aria-label="Opportunity categories">
+        <p>One place to discover</p>
+        <div><span>Technology</span><span>Arts</span><span>Sports</span><span>Skilled trades</span><span>Learning</span></div>
+      </section>
+
+      <section class="experience section" id="experience">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> Personal by design</p>
+          <h2>See what changes when the profile changes.</h2>
+          <p>Choose a profile below. The opportunities update instantly—just as they do in the app.</p>
+        </div>
+
+        <div class="experience-panel reveal">
+          <div class="profile-controls" role="group" aria-label="Choose a demonstration profile">
+            <button class="profile-chip active" type="button" data-profile="child" aria-pressed="true">
+              <span class="chip-avatar amber">J</span><span><b>Jordan</b><small>Age 8 · Parent-managed</small></span>
+            </button>
+            <button class="profile-chip" type="button" data-profile="teen" aria-pressed="false">
+              <span class="chip-avatar blue">A</span><span><b>Amari</b><small>Age 15 · Parent-managed</small></span>
+            </button>
+            <button class="profile-chip" type="button" data-profile="adult" aria-pressed="false">
+              <span class="chip-avatar green">T</span><span><b>Taylor</b><small>Age 21 · Independent</small></span>
+            </button>
+          </div>
+
+          <div class="discover-demo">
+            <div class="demo-toolbar">
+              <div><small id="profile-kicker">Showing opportunities for Jordan</small><h3>Discover</h3></div>
+              <span class="filter-badge" id="filter-badge">Age 8 · All genders</span>
+            </div>
+            <div class="demo-search" aria-hidden="true">⌕ <span>Search opportunities</span><b>⌘ K</b></div>
+            <div class="category-pills" aria-hidden="true"><span class="active">For you</span><span>Sports</span><span>Arts</span><span>Learning</span></div>
+            <div class="opportunity-grid" id="opportunity-grid" aria-live="polite"></div>
+            <p class="demo-note">Illustrative opportunities demonstrate the personalized product experience.</p>
+          </div>
+        </div>
+      </section>
+
+      <section class="family-section section" id="families">
+        <div class="family-copy reveal">
+          <p class="eyebrow light"><span></span> Built around families</p>
+          <h2>Independence grows with them. Protection comes first.</h2>
+          <p>
+            Children under 18 never need a standalone account. A parent creates their profile, controls access,
+            and can browse separately for each child.
+          </p>
+          <ul class="check-list">
+            <li><span>01</span><div><b>Create a child profile</b><small>Add age, grade, interests, and relevant eligibility details.</small></div></li>
+            <li><span>02</span><div><b>Share a private access code</b><small>The child can explore their own tailored view without owning an account.</small></div></li>
+            <li><span>03</span><div><b>Stay connected</b><small>Parents keep consent, saves, deadlines, and spending decisions in one place.</small></div></li>
+          </ul>
+        </div>
+        <div class="code-card reveal">
+          <div class="code-card-head"><span>Child access</span><span class="secure-pill">● Secure</span></div>
+          <div class="code-person"><span class="chip-avatar blue">A</span><div><b>Amari’s access code</b><small>Created by parent · Revocable anytime</small></div></div>
+          <div class="code-value" aria-label="Example hidden access code"><span>••••</span><span>••••</span></div>
+          <button type="button" disabled>Copy private code</button>
+          <p>Example only. Real codes are generated securely and shown once.</p>
+        </div>
+      </section>
+
+      <section class="proof-section section">
+        <div class="section-heading reveal">
+          <p class="eyebrow"><span></span> One connected product</p>
+          <h2>Designed for every side of the opportunity.</h2>
+        </div>
+        <div class="proof-grid">
+          <article class="proof-card orange reveal"><span>01</span><h3>Youth & young adults</h3><p>Discover relevant programs without sorting through opportunities meant for someone else.</p></article>
+          <article class="proof-card navy reveal"><span>02</span><h3>Parents & guardians</h3><p>Manage multiple children, saved opportunities, access, and family deadlines from one account.</p></article>
+          <article class="proof-card cream reveal"><span>03</span><h3>Community providers</h3><p>Submit programs with clear eligibility, age, cost, transportation, and scheduling details.</p></article>
+          <article class="proof-card photo reveal">
+            <img src="/images/sports.jpg" alt="Young athletes running outdoors" />
+            <div><span>04</span><h3>Detroit’s ecosystem</h3><p>A clearer path from local programs to the young people they are built to serve.</p></div>
+          </article>
+        </div>
+      </section>
+
+      <section class="accessibility-section section" id="accessibility">
+        <div class="accessibility-copy reveal">
+          <p class="eyebrow"><span></span> Access is part of the product</p>
+          <h2>Clear in sunlight. Comfortable in dark mode. Usable at larger text sizes.</h2>
+          <p>
+            Opportunity313 follows Apple platform conventions with semantic colors, meaningful labels,
+            generous touch targets, reduced-motion support, and information that never relies on color alone.
+          </p>
+          <div class="accessibility-tags"><span>VoiceOver</span><span>Dynamic Type</span><span>44pt targets</span><span>Reduce Motion</span></div>
+        </div>
+        <div class="contrast-demo reveal">
+          <div class="appearance-switch" aria-label="Appearance preview">
+            <button class="active" type="button" data-theme-preview="light">Light</button>
+            <button type="button" data-theme-preview="dark">Dark</button>
+          </div>
+          <div class="preview-surface light" id="preview-surface">
+            <small>RECOMMENDED FOR YOU</small>
+            <div class="preview-row">
+              <img src="/images/learning.jpg" alt="Student studying at a desk" />
+              <div><b>College Ready Detroit</b><span>Academic support · Free</span><em>Match: age + interests</em></div>
+              <strong aria-label="Saved">♥</strong>
+            </div>
+          </div>
+        </div>
+      </section>
+
+      <section class="build-section section">
+        <div class="build-panel reveal">
+          <div>
+            <p class="eyebrow light"><span></span> Built in Detroit, built to ship</p>
+            <h2>A native SwiftUI foundation with a real product architecture.</h2>
+            <p>Role-based flows, Supabase-backed data, reviewed provider submissions, family profiles, eligibility filters, saves, and calendars—all documented in the public repository.</p>
+          </div>
+          <a class="button light-button" href="https://github.com/QuietRift/Opportunity313iOS">Explore the GitHub repository <span aria-hidden="true">↗</span></a>
+        </div>
+      </section>
+
+      <section class="closing section reveal">
+        <p class="eyebrow"><span></span> Opportunity starts with access</p>
+        <h2>Detroit has the programs.<br />Opportunity313 helps families find their fit.</h2>
+        <a class="button primary" href="https://github.com/QuietRift/Opportunity313iOS">View the project on GitHub</a>
+      </section>
+    </main>
+
+    <footer>
+      <a class="brand footer-brand" href="#top"><span class="brand-mark" aria-hidden="true">O</span><span>Opportunity<span>313</span></span></a>
+      <p>Connecting Detroit youth and families with reviewed opportunities.</p>
+      <div><span>© <span id="year"></span> Opportunity313</span><a href="https://github.com/QuietRift/Opportunity313iOS">GitHub</a></div>
+    </footer>
+  </body>
+</html>
+
