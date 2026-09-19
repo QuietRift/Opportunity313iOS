@@ -151,7 +151,7 @@ struct DiscoverView: View {
                 .multilineTextAlignment(.center)
                 .frame(maxWidth: .infinity, minHeight: 44)
                 .foregroundStyle(recommendedOnly == recommended ? Color.white : Color.primary)
-                .background(recommendedOnly == recommended ? Color.orange : Color.clear,
+                .background(recommendedOnly == recommended ? Opportunity313Brand.accent : Color.clear,
                             in: RoundedRectangle(cornerRadius: 12))
         }
         .buttonStyle(.plain)
@@ -169,10 +169,10 @@ struct DiscoverView: View {
             Button { showFilters = true } label: {
                 Image(systemName: "slider.horizontal.3")
                     .font(.title3)
-                    .foregroundStyle(hasActiveFilters ? Color.white : Color.orange)
+                    .foregroundStyle(hasActiveFilters ? Color.white : Opportunity313Brand.accent)
                     .frame(width: 44, height: 44)
-                    .background(hasActiveFilters ? Color.orange : Color.orange.opacity(0.08), in: Circle())
-                    .overlay(Circle().stroke(Color.orange.opacity(0.2)))
+                    .background(hasActiveFilters ? Opportunity313Brand.accent : Opportunity313Brand.accent.opacity(0.08), in: Circle())
+                    .overlay(Circle().stroke(Opportunity313Brand.accent.opacity(0.2)))
             }
             .accessibilityLabel(hasActiveFilters ? "Filters applied. Edit filters" : "Filter opportunities")
         }
@@ -292,14 +292,14 @@ struct DiscoverView: View {
                         }
                     } header: {
                         HStack(spacing: 10) {
-                            RoundedRectangle(cornerRadius: 2).fill(Color.orange).frame(width: 4, height: 24)
+                            RoundedRectangle(cornerRadius: 2).fill(Opportunity313Brand.accent).frame(width: 4, height: 24)
                             Text(category).font(.title3.bold()).foregroundStyle(.primary)
                             Spacer()
                             if selectedCategory == nil {
                             Button {
                                 selectedCategory = category
                             } label: {
-                                Text("See all").font(.subheadline).foregroundStyle(.orange)
+                                Text("See all").font(.subheadline).foregroundStyle(Opportunity313Brand.accent)
                             }
                             .accessibilityLabel("See all \(category) opportunities")
                             }
@@ -370,7 +370,7 @@ struct DiscoverView: View {
             .padding(.horizontal, 16)
             .padding(.vertical, 10)
             .foregroundStyle(selected ? Color.white : Color.primary)
-            .background(selected ? Color.orange : Color(.secondarySystemBackground), in: Capsule())
+            .background(selected ? Opportunity313Brand.accent : Color(.secondarySystemBackground), in: Capsule())
     }
 
     private var groupedOpportunities: [String: [Opportunity]] {
