@@ -3,6 +3,16 @@ import Testing
 @testable import Opportunity313
 
 struct Opportunity313Tests {
+    @Test func clearingYouthGradeSendsNullWithoutChangingIdentity() throws {
+        let update = UpdateYouthProfile(firstName: "Youth", ageBand: "14–18", grade: nil,
+                                        gender: .girl, interests: [], accessibilityPreferences: [])
+        let object = try #require(JSONSerialization.jsonObject(with: JSONEncoder().encode(update)) as? [String: Any])
+        #expect(object["grade"] is NSNull)
+        #expect(object["gender"] as? String == "girl")
+        #expect(object["user_id"] == nil)
+        #expect(object["account_type"] == nil)
+    }
+
     @Test func supportedAgeGroupsCoverEarlyChildhoodThroughYoungAdults() {
         #expect(AgeGroup.supported.first?.minimumAge == 2)
         #expect(AgeGroup.supported.last?.maximumAge == 24)

@@ -5,9 +5,7 @@ private struct OpportunityCardSurface: ViewModifier {
     let cornerRadius: CGFloat
 
     private var fill: Color {
-        colorScheme == .dark
-            ? Color(red: 0.22, green: 0.20, blue: 0.18)
-            : Color(.systemBackground)
+        Opportunity313Brand.surface(for: colorScheme)
     }
 
     func body(content: Content) -> some View {
@@ -40,6 +38,7 @@ extension View {
 }
 
 struct HomeView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var profileService = YouthProfileService()
     @StateObject private var opportunityService = OpportunityService()
@@ -69,17 +68,22 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 24)
             }
-            .background(Opportunity313Brand.warmSurface.opacity(0.34))
+            .background(Opportunity313Brand.canvas(for: colorScheme).opacity(colorScheme == .dark ? 1 : 0.34))
             .toolbar(.hidden, for: .navigationBar)
             .task { await reload() }
             .refreshable { await reload() }
             .sheet(isPresented: $showUpdates) {
                 NavigationStack {
                     ScrollView { deadlineSection.padding(20) }
+                        .background(
+                            Opportunity313Brand.canvas(for: colorScheme)
+                                .ignoresSafeArea()
+                        )
                         .navigationTitle("Upcoming Deadlines")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showUpdates = false } } }
                 }
+                .opportunity313PageBackground()
             }
         }
     }
@@ -129,12 +133,11 @@ struct HomeView: View {
                     NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
                         HStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("DISCOVER OPPORTUNITIES").font(.caption.bold())
                                 Text(opportunity.title)
                                     .font(.title2.bold())
                                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                                 Text(opportunity.neighborhood ?? opportunity.city).font(.subheadline)
-                                Text("Explore opportunity  →").font(.subheadline.bold())
+                                Text("View details  →").font(.subheadline.bold())
                                     .padding(.horizontal, 14).padding(.vertical, 10)
                                     .background(.white.opacity(0.2), in: Capsule())
                             }
@@ -189,7 +192,7 @@ struct HomeView: View {
                     .accessibilityIdentifier("seeMoreRecommendations")
             }
             if !opportunityService.isLoading && recommendedOpportunities.isEmpty {
-                Text("More matches are coming. Explore Discover for other opportunities.").font(.subheadline).foregroundStyle(.secondary)
+                Text("No matches yet. Browse Discover for more opportunities.").font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
@@ -206,7 +209,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Deadlines Coming Up").font(.title2.bold())
             if upcomingDeadlines.isEmpty {
-                Text("No upcoming deadlines right now.").font(.subheadline).foregroundStyle(.secondary)
+                Text("No upcoming deadlines.").font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
@@ -260,15 +263,22 @@ private func interestSymbol(_ category: String) -> String {
 
 struct RecommendationCard: View {
     @EnvironmentObject var savedService: SavedOpportunityService
+    @EnvironmentObject var familySaveService: FamilySaveService
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let opportunity: Opportunity
     var showsCategory = true
     var allowsSave = true
+    var managedYouthProfileID: UUID? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
+                NavigationLink {
+                    OpportunityDetailView(
+                        opportunity: opportunity,
+                        managedYouthProfileID: managedYouthProfileID
+                    )
+                } label: {
                     GeometryReader { geometry in
                         Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
                             .frame(width: geometry.size.width, height: 150).clipped()
@@ -280,16 +290,30 @@ struct RecommendationCard: View {
                 .accessibilityHint("Opens opportunity details")
                 if allowsSave {
                 Button {
-                    Task { await savedService.toggleSave(opportunityID: opportunity.id) }
+                    Task {
+                        if let managedYouthProfileID {
+                            await familySaveService.toggleSave(
+                                opportunityID: opportunity.id,
+                                for: managedYouthProfileID
+                            )
+                        } else {
+                            await savedService.toggleSave(opportunityID: opportunity.id)
+                        }
+                    }
                 } label: {
-                    Image(systemName: savedService.isSaved(opportunity.id) ? "bookmark.fill" : "bookmark")
+                    Image(systemName: cardIsSaved ? "bookmark.fill" : "bookmark")
                         .foregroundStyle(Opportunity313Brand.accent).frame(width: 44, height: 44)
                         .background(.background, in: Circle())
                 }.buttonStyle(.plain).padding(10)
-                    .accessibilityLabel(savedService.isSaved(opportunity.id) ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
+                    .accessibilityLabel(cardIsSaved ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
                 }
             }
-            NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
+            NavigationLink {
+                OpportunityDetailView(
+                    opportunity: opportunity,
+                    managedYouthProfileID: managedYouthProfileID
+                )
+            } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     if showsCategory {
                         Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(Opportunity313Brand.accent)
@@ -312,6 +336,16 @@ struct RecommendationCard: View {
             }.buttonStyle(.plain)
         }
         .opportunityCardSurface()
+    }
+
+    private var cardIsSaved: Bool {
+        if let managedYouthProfileID {
+            return familySaveService.isSaved(
+                opportunityID: opportunity.id,
+                for: managedYouthProfileID
+            )
+        }
+        return savedService.isSaved(opportunity.id)
     }
 }
 

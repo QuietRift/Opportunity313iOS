@@ -104,6 +104,32 @@ struct Opportunity: Codable, Identifiable, Hashable {
 }
 
 extension Opportunity {
+    var registrationMethodDisplayText: String? {
+        let trimmed = registrationMethod.trimmingCharacters(in: .whitespacesAndNewlines)
+        let normalized = trimmed
+            .lowercased()
+            .replacingOccurrences(of: "-", with: "_")
+            .replacingOccurrences(of: " ", with: "_")
+
+        guard !trimmed.isEmpty, normalized != "external_url" else {
+            return nil
+        }
+
+        return trimmed
+    }
+
+    var summaryWithoutExternalURL: String {
+        summary
+            .components(separatedBy: .newlines)
+            .filter {
+                let line = $0.lowercased()
+                return !line.contains("external_url") &&
+                    !line.contains("external url")
+            }
+            .joined(separator: "\n")
+            .trimmingCharacters(in: .whitespacesAndNewlines)
+    }
+
     var chronologicalSortDate: Date {
         startsAt ?? .distantFuture
     }

@@ -9,6 +9,8 @@ import SwiftUI
 
 struct OpportunityFilterView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss) private var dismiss
 
     @Binding var selectedAge: Int?
@@ -110,6 +112,11 @@ struct OpportunityFilterView: View {
                     .foregroundStyle(.red)
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Filters")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar {
@@ -124,5 +131,6 @@ struct OpportunityFilterView: View {
                 }
             }
         }
+        .opportunity313PageBackground()
     }
 }

@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ProviderOpportunitiesView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     let organization: Organization
 
     @StateObject private var opportunityService =
@@ -58,8 +60,13 @@ struct ProviderOpportunitiesView: View {
                         )
                     }
                     .listStyle(.plain)
+                    .scrollContentBackground(.hidden)
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle(
                 "Opportunities"
             )
@@ -113,6 +120,7 @@ struct ProviderOpportunitiesView: View {
                 )
             }
         }
+        .opportunity313PageBackground()
     }
 }
 

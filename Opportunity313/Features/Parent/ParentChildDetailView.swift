@@ -9,7 +9,13 @@ import SwiftUI
 
 struct ParentChildDetailView: View {
 
-    let child: YouthProfile
+    @Environment(\.colorScheme) private var colorScheme
+
+    let initialChild: YouthProfile
+    private var child: YouthProfile { childService.children.first { $0.id == initialChild.id } ?? initialChild }
+    @State private var showEdit = false
+    @State private var showRevokeConfirmation = false
+    @StateObject private var editService = YouthProfileService()
 
     @ObservedObject var childService: ParentManagedYouthService
     @State private var displayedGender: ParticipantGender?
@@ -23,7 +29,7 @@ struct ParentChildDetailView: View {
         FamilySaveService
 
     init(child: YouthProfile, childService: ParentManagedYouthService) {
-        self.child = child
+        self.initialChild = child
         self.childService = childService
         _displayedGender = State(initialValue: child.gender)
     }
@@ -100,6 +106,12 @@ struct ParentChildDetailView: View {
                         )
                     }
 
+                    ProfileInfoRow(icon: "mappin", title: "ZIP / Neighborhood", value: "Not collected")
+                    ProfileInfoRow(icon: "tag", title: "Preferred Opportunity Categories", value: "Recommendations use the interests below")
+                    ProfileInfoRow(icon: "accessibility", title: "Accessibility Needs (Optional)", value: child.accessibilityPreferences.isEmpty ? "Not provided" : child.accessibilityPreferences.joined(separator: ", "))
+                    ProfileInfoRow(icon: "bus", title: "Transportation Preference / Needs", value: "Not collected")
+                    ProfileInfoRow(icon: "person.2", title: "Guardian Relationship", value: childService.relationships[child.id]?.capitalized ?? "Not available")
+
                     if let gender = displayedGender {
                         ProfileInfoRow(
                             icon: "person.fill",
@@ -143,10 +155,14 @@ struct ParentChildDetailView: View {
                     )
                 )
 
+                SchoolProfileCard(youthProfileID: child.id)
+
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Child Access").font(.title2.bold())
-                    Text("Create a private sign-in code so \(child.firstName) can use this profile without creating an independent account.")
-                        .font(.subheadline).foregroundStyle(.secondary)
+                    if child.accountType == "parent_managed" {
+                        Text("Create a private sign-in code so \(child.firstName) can use this profile without creating an independent account.")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
 
                     if let code = childAccessService.generatedCode {
                         Text(code)
@@ -160,24 +176,31 @@ struct ParentChildDetailView: View {
                     }
 
                     HStack {
-                        Button(childAccessService.generatedCode == nil ? "Create Access Code" : "Replace Code") {
-                            Task { await childAccessService.generate(for: child.id) }
+                        if child.accountType == "parent_managed" {
+                            Button(childAccessService.generatedCode == nil ? "Create Access Code" : "Replace Code") {
+                                Task { await childAccessService.generate(for: child.id) }
+                            }
+                            .buttonStyle(.borderedProminent)
                         }
-                        .buttonStyle(.borderedProminent)
 
-                        Button("Revoke", role: .destructive) {
-                            Task { await childAccessService.revoke(for: child.id) }
+                        Button("Revoke Access", role: .destructive) {
+                            showRevokeConfirmation = true
                         }
                         .buttonStyle(.bordered)
+                        .accessibilityIdentifier("revokeChildAccess")
                     }
                     .disabled(childAccessService.isLoading)
+
+                    if let status = childAccessService.statusMessage {
+                        Text(status).font(.caption).foregroundStyle(.secondary)
+                    }
 
                     if let error = childAccessService.errorMessage {
                         Text(error).font(.caption).foregroundStyle(.red)
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+                .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 18))
 
 
                 // MARK: - Interests
@@ -319,7 +342,9 @@ struct ParentChildDetailView: View {
 
                                     OpportunityDetailView(
                                         opportunity:
-                                            opportunity
+                                            opportunity,
+                                        managedYouthProfileID:
+                                            child.id
                                     )
 
                                 } label: {
@@ -392,6 +417,35 @@ struct ParentChildDetailView: View {
             }
             .padding()
         }
+        .background(
+            Opportunity313Brand.canvas(for: colorScheme)
+                .ignoresSafeArea()
+        )
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Edit") { showEdit = true }
+            }
+        }
+        .alert("Revoke \(child.firstName)'s access?", isPresented: $showRevokeConfirmation) {
+            Button("Cancel", role: .cancel) { }
+            Button("Revoke Access", role: .destructive) {
+                Task {
+                    await childAccessService.revoke(for: child.id)
+                    if childAccessService.errorMessage == nil {
+                        await childService.fetchChildren()
+                    }
+                }
+            }
+        } message: {
+            Text("Their current email login or access code will stop working. Their profile and saved opportunities stay in your account. You can create a new access code later.")
+        }
+        .sheet(isPresented: $showEdit) {
+            EditYouthProfileView(profile: child, profileService: editService) { name, age, grade, interests, accessibility in
+                try await childService.updateChild(child, firstName: name, ageBand: age,
+                                                   grade: grade, interests: interests, accessibility: accessibility)
+            }
+        }
+        .opportunity313PageBackground()
         .navigationTitle(child.firstName)
         .navigationBarTitleDisplayMode(
             .inline

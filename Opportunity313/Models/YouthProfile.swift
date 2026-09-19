@@ -104,6 +104,17 @@ struct UpdateYouthProfile: Encodable {
     let interests: [String]
     let accessibilityPreferences: [String]
 
+    func encode(to encoder: Encoder) throws {
+        var values = encoder.container(keyedBy: CodingKeys.self)
+        try values.encode(firstName, forKey: .firstName)
+        try values.encode(ageBand, forKey: .ageBand)
+        // Send null when an optional grade is cleared instead of omitting the update.
+        try values.encode(grade, forKey: .grade)
+        try values.encodeIfPresent(gender, forKey: .gender)
+        try values.encode(interests, forKey: .interests)
+        try values.encode(accessibilityPreferences, forKey: .accessibilityPreferences)
+    }
+
     enum CodingKeys: String, CodingKey {
 
         case firstName = "first_name"

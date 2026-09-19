@@ -9,6 +9,8 @@ import SwiftUI
 
 struct SignUpView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss)
     private var dismiss
 
@@ -41,10 +43,15 @@ struct SignUpView: View {
                     signUpForm
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationBarTitleDisplayMode(
                 .inline
             )
         }
+        .opportunity313PageBackground()
         .onAppear {
 
             authService.clearError()
@@ -101,11 +108,7 @@ struct SignUpView: View {
                         .emailAddress
                     )
                     .padding()
-                    .background(
-                        Color(
-                            .secondarySystemBackground
-                        )
-                    )
+                    .background(Opportunity313Brand.surface(for: colorScheme))
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: 14
@@ -121,11 +124,7 @@ struct SignUpView: View {
                         .newPassword
                     )
                     .padding()
-                    .background(
-                        Color(
-                            .secondarySystemBackground
-                        )
-                    )
+                    .background(Opportunity313Brand.surface(for: colorScheme))
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: 14
@@ -142,11 +141,7 @@ struct SignUpView: View {
                         .newPassword
                     )
                     .padding()
-                    .background(
-                        Color(
-                            .secondarySystemBackground
-                        )
-                    )
+                    .background(Opportunity313Brand.surface(for: colorScheme))
                     .clipShape(
                         RoundedRectangle(
                             cornerRadius: 14

@@ -16,6 +16,8 @@ final class AuthService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
+    @Published var displayName = ""
+    @Published var email = ""
     @Published var role: String?
     @Published var needsOnboarding = false
     @Published var hasYouthProfile = false
@@ -36,6 +38,8 @@ final class AuthService: ObservableObject {
 
             let shouldLoadAccount = userID != session?.user.id || role == nil
             userID = session?.user.id
+            displayName = session?.user.userMetadata["full_name"]?.stringValue ?? ""
+            email = session?.user.email ?? ""
             isAuthenticated = session != nil
 
             if session != nil {
@@ -194,6 +198,22 @@ final class AuthService: ObservableObject {
         }
     }
 
+    /// Clear this device's session when an account was removed or the user
+    /// wants to use a different login. This does not sign out other devices.
+    func switchAccount() async {
+        // The Auth client removes its stored session before contacting the
+        // server, so a deleted account can still be cleared on this device.
+        try? await supabase.auth.signOut(scope: .local)
+        userID = nil
+        isAuthenticated = false
+        role = nil
+        needsOnboarding = false
+        hasYouthProfile = false
+        accountError = nil
+        errorMessage = nil
+        isResolvingAccount = false
+    }
+
 
     // MARK: - Load User Role
 
@@ -252,10 +272,31 @@ final class AuthService: ObservableObject {
                 }
 
             } else {
-
-                role = nil
-                needsOnboarding = true
-                hasYouthProfile = false
+                // A cached token from a deleted account can still make a
+                // role query return zero rows. Verify the Auth user before
+                // treating this as a new signup.
+                do {
+                    let account = try await supabase.auth.user()
+                    guard account.id == userID else {
+                        await switchAccount()
+                        return
+                    }
+                    role = nil
+                    needsOnboarding = true
+                    hasYouthProfile = false
+                } catch let error as AuthError {
+                    switch error {
+                    case .sessionMissing:
+                        await switchAccount()
+                    case .api(_, _, _, let response)
+                        where [401, 403, 404].contains(response.statusCode):
+                        await switchAccount()
+                    default:
+                        accountError = error.localizedDescription
+                    }
+                } catch {
+                    accountError = error.localizedDescription
+                }
             }
 
         } catch {
@@ -332,6 +373,13 @@ final class AuthService: ObservableObject {
         await loadUserRole()
     }
 
+
+    func updateDisplayName(_ name: String) async throws {
+        let user = try await supabase.auth.update(user: UserAttributes(
+            data: ["full_name": .string(name.trimmingCharacters(in: .whitespacesAndNewlines))]
+        ))
+        displayName = user.userMetadata["full_name"]?.stringValue ?? ""
+    }
 
     // MARK: - Clear Error
 

@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ParentCalendarView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @StateObject private var childService =
         ParentManagedYouthService()
 
@@ -33,6 +35,12 @@ struct ParentCalendarView: View {
                     alignment: .leading,
                     spacing: 24
                 ) {
+
+                    Picker("Family Calendar Filter", selection: $deadlinesOnly) {
+                        Text("Saved Opportunities").tag(false)
+                        Text("Deadlines").tag(true)
+                    }
+                    .pickerStyle(.segmented)
 
                     if let error = opportunityService.errorMessage {
                         ContentUnavailableView("Unable to Load Calendar", systemImage: "exclamationmark.triangle", description: Text(error))
@@ -70,22 +78,17 @@ struct ParentCalendarView: View {
                 .frame(maxWidth: .infinity)
                 .padding()
             }
-            .safeAreaInset(edge: .top) {
-                Picker("Family Calendar Filter", selection: $deadlinesOnly) {
-                    Text("Saved Opportunities").tag(false)
-                    Text("Deadlines").tag(true)
-                }
-                .pickerStyle(.segmented)
-                .padding(.horizontal)
-                .padding(.vertical, 8)
-                .background(.background)
-            }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .onChange(of: deadlinesOnly) {
                 if selectedDayItems.isEmpty, let next = upcomingItems.first { selectedDate = next.date }
             }
             .navigationTitle(
                 "Family Calendar"
             )
+            .navigationBarTitleDisplayMode(.inline)
             .task {
 
                 await loadData()
@@ -102,6 +105,7 @@ struct ParentCalendarView: View {
                 Task { await loadData() }
             }
         }
+        .opportunity313PageBackground()
     }
 
 
@@ -208,7 +212,9 @@ struct ParentCalendarView: View {
 
                         OpportunityDetailView(
                             opportunity:
-                                item.opportunity
+                                item.opportunity,
+                            managedYouthProfileID:
+                                item.child.id
                         )
 
                     } label: {
@@ -265,7 +271,9 @@ struct ParentCalendarView: View {
 
                         OpportunityDetailView(
                             opportunity:
-                                item.opportunity
+                                item.opportunity,
+                            managedYouthProfileID:
+                                item.child.id
                         )
 
                     } label: {

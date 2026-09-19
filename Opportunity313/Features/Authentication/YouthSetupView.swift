@@ -9,6 +9,7 @@ import SwiftUI
 
 struct YouthSetupView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var authService: AuthService
 
     @StateObject private var youthService =
@@ -66,8 +67,13 @@ struct YouthSetupView: View {
                 }
                 .padding()
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationBarBackButtonHidden(true)
         }
+        .opportunity313PageBackground()
     }
 
 
@@ -102,9 +108,7 @@ struct YouthSetupView: View {
             TextField("First name", text: $firstName)
                 .textContentType(.givenName)
                 .padding()
-                .background(
-                    Color(.secondarySystemBackground)
-                )
+                .background(Opportunity313Brand.surface(for: colorScheme))
                 .clipShape(
                     RoundedRectangle(cornerRadius: 14)
                 )
@@ -241,14 +245,8 @@ struct YouthSetupView: View {
             }
             .frame(maxWidth: .infinity)
             .padding()
-            .background(
-                formIsValid
-                    ? Color.primary
-                    : Color.secondary.opacity(0.3)
-            )
-            .foregroundStyle(
-                Color(.systemBackground)
-            )
+            .background(formIsValid ? Opportunity313Brand.accent : Color.secondary.opacity(0.3))
+            .foregroundStyle(.white)
             .clipShape(
                 RoundedRectangle(cornerRadius: 16)
             )
@@ -276,6 +274,8 @@ struct YouthSetupView: View {
 // MARK: - Interest Chip
 
 struct InterestChip: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     let title: String
     let selected: Bool
@@ -308,12 +308,12 @@ struct InterestChip: View {
             )
             .background(
                 selected
-                    ? Color.primary
-                    : Color(.secondarySystemBackground)
+                    ? Opportunity313Brand.accent
+                    : Opportunity313Brand.surface(for: colorScheme)
             )
             .foregroundStyle(
                 selected
-                    ? Color(.systemBackground)
+                    ? Color.white
                     : Color.primary
             )
             .clipShape(
