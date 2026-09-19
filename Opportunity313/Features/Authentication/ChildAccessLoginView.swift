@@ -2,6 +2,7 @@ import SwiftUI
 
 struct ChildAccessLoginView: View {
     @Environment(\.dismiss) private var dismiss
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject private var authService: AuthService
     @State private var accessCode = ""
 
@@ -19,7 +20,7 @@ struct ChildAccessLoginView: View {
                     .autocorrectionDisabled()
                     .font(.system(.body, design: .monospaced))
                     .padding()
-                    .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 14))
+                    .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 14))
                     .accessibilityIdentifier("childAccessCode")
 
                 if let error = authService.errorMessage {
@@ -43,10 +44,15 @@ struct ChildAccessLoginView: View {
                 Spacer()
             }
             .padding()
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Access Code")
             .navigationBarTitleDisplayMode(.inline)
             .toolbar { ToolbarItem(placement: .cancellationAction) { Button("Cancel") { dismiss() } } }
             .onAppear { authService.clearError() }
         }
+        .opportunity313PageBackground()
     }
 }

@@ -53,6 +53,8 @@ struct MainTabView: View {
 
 struct YouthTabView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @EnvironmentObject var savedService:
         SavedOpportunityService
 
@@ -124,6 +126,11 @@ struct YouthTabView: View {
                     )
                 }
         }
+        .toolbarBackground(
+            Opportunity313Brand.surface(for: colorScheme),
+            for: .tabBar
+        )
+        .toolbarBackground(.visible, for: .tabBar)
         .task {
 
             await savedService
@@ -136,6 +143,8 @@ struct YouthTabView: View {
 // MARK: - Parent Tabs
 
 struct ParentTabView: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @State private var selectedTab = 0
     @State private var recommendedOnly = false
@@ -204,6 +213,11 @@ struct ParentTabView: View {
                     )
                 }
         }
+        .toolbarBackground(
+            Opportunity313Brand.surface(for: colorScheme),
+            for: .tabBar
+        )
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }
 
@@ -211,6 +225,8 @@ struct ParentTabView: View {
 // MARK: - Provider Tabs
 
 struct ProviderTabView: View {
+
+    @Environment(\.colorScheme) private var colorScheme
 
     @StateObject private var providerService =
         ProviderService()
@@ -283,6 +299,11 @@ struct ProviderTabView: View {
                             )
                         }
                 }
+                .toolbarBackground(
+                    Opportunity313Brand.surface(for: colorScheme),
+                    for: .tabBar
+                )
+                .toolbarBackground(.visible, for: .tabBar)
 
             } else if let error = providerService.errorMessage {
                 VStack(spacing: 16) {
@@ -311,6 +332,8 @@ struct ProviderTabView: View {
 
 struct AdminTabView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     var body: some View {
 
         TabView {
@@ -336,5 +359,10 @@ struct AdminTabView: View {
                     )
                 }
         }
+        .toolbarBackground(
+            Opportunity313Brand.surface(for: colorScheme),
+            for: .tabBar
+        )
+        .toolbarBackground(.visible, for: .tabBar)
     }
 }

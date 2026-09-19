@@ -9,6 +9,8 @@ import SwiftUI
 
 struct AddChildView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss)
     private var dismiss
 
@@ -215,6 +217,11 @@ struct AddChildView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Add Child")
             .navigationBarTitleDisplayMode(
                 .inline
@@ -249,6 +256,7 @@ struct AddChildView: View {
                 }
             }
         }
+        .opportunity313PageBackground()
     }
 
 

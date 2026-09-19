@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ParentChildrenView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @StateObject private var childService =
         ParentManagedYouthService()
 
@@ -40,28 +42,46 @@ struct ParentChildrenView: View {
 
                 } else {
 
-                    List(
-                        childService.children
-                    ) { child in
+                    ScrollView {
+                        LazyVStack(spacing: 12) {
+                            ForEach(childService.children) { child in
+                                NavigationLink {
+                                    ParentChildDetailView(
+                                        child: child,
+                                        childService: childService
+                                    )
+                                } label: {
+                                    HStack(spacing: 12) {
+                                        ParentChildRow(child: child)
 
-                        NavigationLink {
-
-                            ParentChildDetailView(
-                                child: child,
-                                childService: childService
-                            )
-
-                        } label: {
-
-                            ParentChildRow(
-                                child: child
-                            )
+                                        Image(systemName: "chevron.right")
+                                            .font(.subheadline.weight(.semibold))
+                                            .foregroundStyle(.secondary)
+                                    }
+                                    .padding(16)
+                                    .background(
+                                        Opportunity313Brand.surface(for: colorScheme),
+                                        in: RoundedRectangle(cornerRadius: 18)
+                                    )
+                                    .overlay {
+                                        RoundedRectangle(cornerRadius: 18)
+                                            .stroke(Opportunity313Brand.accent.opacity(0.14))
+                                    }
+                                }
+                                .buttonStyle(.plain)
+                                .accessibilityIdentifier("managedChildLink")
+                            }
                         }
-                        .accessibilityIdentifier("managedChildLink")
+                        .padding(.horizontal, 16)
+                        .padding(.top, 8)
+                        .padding(.bottom, 24)
                     }
-                    .listStyle(.plain)
                 }
             }
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Children")
             .toolbar {
 
@@ -102,6 +122,7 @@ struct ParentChildrenView: View {
                 )
             }
         }
+        .opportunity313PageBackground()
     }
 }
 

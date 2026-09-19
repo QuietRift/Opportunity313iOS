@@ -9,10 +9,13 @@ import SwiftUI
 
 struct OpportunityDetailView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
     @EnvironmentObject var savedService: SavedOpportunityService
+    @EnvironmentObject var familySaveService: FamilySaveService
     @EnvironmentObject var authService: AuthService
 
     let opportunity: Opportunity
+    var managedYouthProfileID: UUID? = nil
 
     var body: some View {
 
@@ -42,7 +45,7 @@ struct OpportunityDetailView: View {
                         .font(.largeTitle)
                         .fontWeight(.bold)
 
-                    Text(opportunity.summary)
+                    Text(opportunity.summaryWithoutExternalURL)
                         .font(.body)
                         .foregroundStyle(.secondary)
                 }
@@ -329,14 +332,15 @@ struct OpportunityDetailView: View {
                         .font(.title2)
                         .fontWeight(.bold)
 
-                    DetailRow(
-                        icon:
-                            "square.and.pencil",
-                        title: "Method",
-                        value:
-                            opportunity
-                                .registrationMethod
-                    )
+                    if let registrationMethod =
+                        opportunity.registrationMethodDisplayText {
+
+                        DetailRow(
+                            icon: "square.and.pencil",
+                            title: "Method",
+                            value: registrationMethod
+                        )
+                    }
 
                     if let registrationURL =
                         opportunity.registrationUrl,
@@ -369,14 +373,8 @@ struct OpportunityDetailView: View {
                                 Spacer()
                             }
                             .padding()
-                            .background(
-                                Color.primary
-                            )
-                            .foregroundStyle(
-                                Color(
-                                    .systemBackground
-                                )
-                            )
+                            .background(Opportunity313Brand.accent)
+                            .foregroundStyle(.white)
                             .clipShape(
                                 RoundedRectangle(
                                     cornerRadius: 16
@@ -395,13 +393,18 @@ struct OpportunityDetailView: View {
             .frame(maxWidth: .infinity)
             .padding()
         }
+        .background(
+            Opportunity313Brand.canvas(for: colorScheme)
+                .ignoresSafeArea()
+        )
         .navigationTitle("Opportunity")
         .navigationBarTitleDisplayMode(
             .inline
         )
         .toolbar {
 
-            if authService.role == "youth" {
+            if authService.role == "youth" ||
+                (authService.role == "parent" && managedYouthProfileID != nil) {
 
                 ToolbarItem(
                     placement:
@@ -412,36 +415,51 @@ struct OpportunityDetailView: View {
 
                         Task {
 
-                            await savedService
-                                .toggleSave(
-                                    opportunityID:
-                                        opportunity.id
+                            if let managedYouthProfileID {
+                                await familySaveService.toggleSave(
+                                    opportunityID: opportunity.id,
+                                    for: managedYouthProfileID
                                 )
+                            } else {
+                                await savedService.toggleSave(
+                                    opportunityID: opportunity.id
+                                )
+                            }
                         }
 
                     } label: {
 
                         Image(
                             systemName:
-                                savedService
-                                    .isSaved(
-                                        opportunity.id
-                                    )
+                                isSaved
                                 ? "bookmark.fill"
                                 : "bookmark"
                         )
                     }
                     .accessibilityLabel(
-                        savedService
-                            .isSaved(
-                                opportunity.id
-                            )
+                        isSaved
                         ? "Remove from saved opportunities"
                         : "Save opportunity"
                     )
                 }
             }
         }
+        .task {
+            if let managedYouthProfileID {
+                await familySaveService.loadSaves(for: [managedYouthProfileID])
+            }
+        }
+        .opportunity313PageBackground()
+    }
+
+    private var isSaved: Bool {
+        if let managedYouthProfileID {
+            return familySaveService.isSaved(
+                opportunityID: opportunity.id,
+                for: managedYouthProfileID
+            )
+        }
+        return savedService.isSaved(opportunity.id)
     }
 
 

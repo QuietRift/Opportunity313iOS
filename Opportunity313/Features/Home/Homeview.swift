@@ -5,9 +5,7 @@ private struct OpportunityCardSurface: ViewModifier {
     let cornerRadius: CGFloat
 
     private var fill: Color {
-        colorScheme == .dark
-            ? Color(red: 0.22, green: 0.20, blue: 0.18)
-            : Color(.systemBackground)
+        Opportunity313Brand.surface(for: colorScheme)
     }
 
     func body(content: Content) -> some View {
@@ -18,7 +16,7 @@ private struct OpportunityCardSurface: ViewModifier {
                 RoundedRectangle(cornerRadius: cornerRadius)
                     .stroke(
                         colorScheme == .dark
-                            ? Color.orange.opacity(0.28)
+                            ? Opportunity313Brand.accent.opacity(0.28)
                             : Color(.separator).opacity(0.30),
                         lineWidth: colorScheme == .dark ? 1.25 : 1
                     )
@@ -40,6 +38,7 @@ extension View {
 }
 
 struct HomeView: View {
+    @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var profileService = YouthProfileService()
     @StateObject private var opportunityService = OpportunityService()
@@ -48,7 +47,7 @@ struct HomeView: View {
     var onSeeMore: () -> Void = {}
     var onDiscover: () -> Void = {}
     var onProfile: () -> Void = {}
-    private let accent = Color.orange
+    private let accent = Opportunity313Brand.accent
 
     var body: some View {
         NavigationStack {
@@ -69,16 +68,22 @@ struct HomeView: View {
                 .frame(maxWidth: .infinity)
                 .padding(.bottom, 24)
             }
+            .background(Opportunity313Brand.canvas(for: colorScheme).opacity(colorScheme == .dark ? 1 : 0.34))
             .toolbar(.hidden, for: .navigationBar)
             .task { await reload() }
             .refreshable { await reload() }
             .sheet(isPresented: $showUpdates) {
                 NavigationStack {
                     ScrollView { deadlineSection.padding(20) }
+                        .background(
+                            Opportunity313Brand.canvas(for: colorScheme)
+                                .ignoresSafeArea()
+                        )
                         .navigationTitle("Upcoming Deadlines")
                         .navigationBarTitleDisplayMode(.inline)
                         .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showUpdates = false } } }
                 }
+                .opportunity313PageBackground()
             }
         }
     }
@@ -259,15 +264,22 @@ private func interestSymbol(_ category: String) -> String {
 
 struct RecommendationCard: View {
     @EnvironmentObject var savedService: SavedOpportunityService
+    @EnvironmentObject var familySaveService: FamilySaveService
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let opportunity: Opportunity
     var showsCategory = true
     var allowsSave = true
+    var managedYouthProfileID: UUID? = nil
 
     var body: some View {
         VStack(alignment: .leading, spacing: 0) {
             ZStack(alignment: .topTrailing) {
-                NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
+                NavigationLink {
+                    OpportunityDetailView(
+                        opportunity: opportunity,
+                        managedYouthProfileID: managedYouthProfileID
+                    )
+                } label: {
                     GeometryReader { geometry in
                         Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
                             .frame(width: geometry.size.width, height: 150).clipped()
@@ -279,19 +291,33 @@ struct RecommendationCard: View {
                 .accessibilityHint("Opens opportunity details")
                 if allowsSave {
                 Button {
-                    Task { await savedService.toggleSave(opportunityID: opportunity.id) }
+                    Task {
+                        if let managedYouthProfileID {
+                            await familySaveService.toggleSave(
+                                opportunityID: opportunity.id,
+                                for: managedYouthProfileID
+                            )
+                        } else {
+                            await savedService.toggleSave(opportunityID: opportunity.id)
+                        }
+                    }
                 } label: {
-                    Image(systemName: savedService.isSaved(opportunity.id) ? "bookmark.fill" : "bookmark")
-                        .foregroundStyle(.orange).frame(width: 44, height: 44)
+                    Image(systemName: cardIsSaved ? "bookmark.fill" : "bookmark")
+                        .foregroundStyle(Opportunity313Brand.accent).frame(width: 44, height: 44)
                         .background(.background, in: Circle())
                 }.buttonStyle(.plain).padding(10)
-                    .accessibilityLabel(savedService.isSaved(opportunity.id) ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
+                    .accessibilityLabel(cardIsSaved ? "Unsave \(opportunity.title)" : "Save \(opportunity.title)")
                 }
             }
-            NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
+            NavigationLink {
+                OpportunityDetailView(
+                    opportunity: opportunity,
+                    managedYouthProfileID: managedYouthProfileID
+                )
+            } label: {
                 VStack(alignment: .leading, spacing: 10) {
                     if showsCategory {
-                        Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(.orange)
+                        Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(Opportunity313Brand.accent)
                     }
                     Text(opportunity.title)
                         .font(.headline)
@@ -312,6 +338,16 @@ struct RecommendationCard: View {
         }
         .opportunityCardSurface()
     }
+
+    private var cardIsSaved: Bool {
+        if let managedYouthProfileID {
+            return familySaveService.isSaved(
+                opportunityID: opportunity.id,
+                for: managedYouthProfileID
+            )
+        }
+        return savedService.isSaved(opportunity.id)
+    }
 }
 
 // MARK: - Deadline Card
@@ -331,7 +367,7 @@ struct DeadlineCard: View {
 
             VStack(alignment: .leading, spacing: 12) {
                 Text(opportunity.category).font(.caption.weight(.semibold))
-                    .foregroundStyle(urgent ? Color.red : Color.orange)
+                    .foregroundStyle(urgent ? Color.red : Opportunity313Brand.accent)
                 Text(opportunity.title)
                     .font(.headline)
                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)

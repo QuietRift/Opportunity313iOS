@@ -9,6 +9,8 @@ import SwiftUI
 
 struct EditYouthProfileView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @Environment(\.dismiss)
     private var dismiss
 
@@ -229,6 +231,11 @@ struct EditYouthProfileView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle("Edit Profile")
             .navigationBarTitleDisplayMode(
                 .inline
@@ -263,6 +270,7 @@ struct EditYouthProfileView: View {
                 }
             }
         }
+        .opportunity313PageBackground()
     }
 
 

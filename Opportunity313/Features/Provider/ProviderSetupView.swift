@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ProviderSetupView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     @ObservedObject var providerService: ProviderService
 
     @State private var organizationName = ""
@@ -119,6 +121,11 @@ struct ProviderSetupView: View {
                     }
                 }
             }
+            .scrollContentBackground(.hidden)
+            .background(
+                Opportunity313Brand.canvas(for: colorScheme)
+                    .ignoresSafeArea()
+            )
             .navigationTitle(
                 "Set Up Organization"
             )
@@ -169,6 +176,7 @@ struct ProviderSetupView: View {
                 )
             }
         }
+        .opportunity313PageBackground()
     }
 
 

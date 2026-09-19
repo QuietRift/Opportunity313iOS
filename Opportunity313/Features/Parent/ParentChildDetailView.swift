@@ -9,6 +9,8 @@ import SwiftUI
 
 struct ParentChildDetailView: View {
 
+    @Environment(\.colorScheme) private var colorScheme
+
     let child: YouthProfile
 
     @ObservedObject var childService: ParentManagedYouthService
@@ -177,7 +179,7 @@ struct ParentChildDetailView: View {
                     }
                 }
                 .padding()
-                .background(Color(.secondarySystemBackground), in: RoundedRectangle(cornerRadius: 18))
+                .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 18))
 
 
                 // MARK: - Interests
@@ -319,7 +321,9 @@ struct ParentChildDetailView: View {
 
                                     OpportunityDetailView(
                                         opportunity:
-                                            opportunity
+                                            opportunity,
+                                        managedYouthProfileID:
+                                            child.id
                                     )
 
                                 } label: {
@@ -392,6 +396,11 @@ struct ParentChildDetailView: View {
             }
             .padding()
         }
+        .background(
+            Opportunity313Brand.canvas(for: colorScheme)
+                .ignoresSafeArea()
+        )
+        .opportunity313PageBackground()
         .navigationTitle(child.firstName)
         .navigationBarTitleDisplayMode(
             .inline
