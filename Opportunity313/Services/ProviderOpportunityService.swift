@@ -72,6 +72,7 @@ final class ProviderOpportunityService: ObservableObject {
         ageMax: Int?,
         gradeMin: Int?,
         gradeMax: Int?,
+        genderEligibility: ProgramGenderEligibility,
         startsAt: Date,
         endsAt: Date?,
         deadline: Date?,
@@ -125,6 +126,8 @@ final class ProviderOpportunityService: ObservableObject {
                     gradeMin,
                 gradeMax:
                     gradeMax,
+                genderEligibility:
+                    genderEligibility,
                 startsAt:
                     startsAt,
                 endsAt:

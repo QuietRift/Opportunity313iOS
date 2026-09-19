@@ -9,6 +9,12 @@ import Foundation
 import Combine
 import Supabase
 
+extension Notification.Name {
+    static let managedYouthProfileDidChange = Notification.Name(
+        "managedYouthProfileDidChange"
+    )
+}
+
 @MainActor
 final class ParentManagedYouthService: ObservableObject {
 
@@ -98,6 +104,7 @@ final class ParentManagedYouthService: ObservableObject {
         firstName: String,
         ageBand: String,
         grade: Int?,
+        gender: ParticipantGender,
         interests: [String],
         accessibilityPreferences: [String],
         relationship: String
@@ -115,6 +122,7 @@ final class ParentManagedYouthService: ObservableObject {
             let firstNameInput: String
             let ageBandInput: String
             let gradeInput: Int?
+            let genderInput: String
             let interestsInput: [String]
             let accessibilityPreferencesInput: [String]
             let relationshipInput: String
@@ -123,6 +131,7 @@ final class ParentManagedYouthService: ObservableObject {
                 case firstNameInput = "first_name_input"
                 case ageBandInput = "age_band_input"
                 case gradeInput = "grade_input"
+                case genderInput = "gender_input"
                 case interestsInput = "interests_input"
 
                 case accessibilityPreferencesInput =
@@ -140,6 +149,7 @@ final class ParentManagedYouthService: ObservableObject {
                 ),
             ageBandInput: ageBand,
             gradeInput: grade,
+            genderInput: gender.rawValue,
             interestsInput: interests,
             accessibilityPreferencesInput:
                 accessibilityPreferences,
@@ -149,7 +159,7 @@ final class ParentManagedYouthService: ObservableObject {
 
         do {
 
-            let _: UUID = try await supabase
+            let newYouthID: UUID = try await supabase
                 .rpc(
                     "create_parent_managed_youth",
                     params: params
@@ -158,9 +168,54 @@ final class ParentManagedYouthService: ObservableObject {
                 .value
 
             await fetchChildren()
+            NotificationCenter.default.post(
+                name: .managedYouthProfileDidChange,
+                object: nil,
+                userInfo: ["youthProfileID": newYouthID]
+            )
 
         } catch {
 
+            errorMessage = error.localizedDescription
+            throw error
+        }
+    }
+
+    func updateChildGender(
+        childID: UUID,
+        gender: ParticipantGender
+    ) async throws {
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+
+        struct Params: Encodable {
+            let youthProfileIdInput: UUID
+            let genderInput: String
+
+            enum CodingKeys: String, CodingKey {
+                case youthProfileIdInput = "youth_profile_id_input"
+                case genderInput = "gender_input"
+            }
+        }
+
+        do {
+            try await supabase
+                .rpc(
+                    "update_parent_managed_youth_gender",
+                    params: Params(
+                        youthProfileIdInput: childID,
+                        genderInput: gender.rawValue
+                    )
+                )
+                .execute()
+            await fetchChildren()
+            NotificationCenter.default.post(
+                name: .managedYouthProfileDidChange,
+                object: nil,
+                userInfo: ["youthProfileID": childID]
+            )
+        } catch {
             errorMessage = error.localizedDescription
             throw error
         }

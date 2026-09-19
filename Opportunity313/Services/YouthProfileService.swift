@@ -90,6 +90,7 @@ final class YouthProfileService: ObservableObject {
             firstName: firstName,
             ageBand: ageBand,
             grade: grade,
+            gender: nil,
             interests: interests,
             accessibilityPreferences: [],
             accountType: "youth_account"
@@ -138,6 +139,7 @@ final class YouthProfileService: ObservableObject {
             firstName: firstName,
             ageBand: ageBand,
             grade: grade,
+            gender: currentProfile?.gender,
             interests: interests,
             accessibilityPreferences:
                 accessibilityPreferences

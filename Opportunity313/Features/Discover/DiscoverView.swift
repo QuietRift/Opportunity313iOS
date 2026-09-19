@@ -22,6 +22,7 @@ struct DiscoverView: View {
     @StateObject private var childService = ParentManagedYouthService()
     @Binding var recommendedOnly: Bool
     @ScaledMetric private var categoryHeight = 50.0
+    @Environment(\.accessibilityReduceMotion) private var reduceMotion
 
     @State private var searchText = ""
 
@@ -82,15 +83,40 @@ struct DiscoverView: View {
                         neighborhoods
                 )
             }
-            .task {
-
-                await opportunityService.fetchOpportunities()
-                if authService.role == "youth" { await profileService.fetchCurrentProfile() }
-                if authService.role == "parent" {
-                    await childService.fetchChildren()
-                    if selectedChildID == nil { selectedChildID = childService.children.first?.id }
+            .task { await reload() }
+            .refreshable { await reload() }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .managedYouthProfileDidChange
+                )
+            ) { notification in
+                guard authService.role == "parent" else { return }
+                if selectedChildID == nil,
+                   let changedID = notification.userInfo?["youthProfileID"] as? UUID {
+                    selectedChildID = changedID
                 }
+                Task { await reloadChildren() }
             }
+        }
+    }
+
+    private func reload() async {
+        await opportunityService.fetchOpportunities()
+        if authService.role == "youth" {
+            await profileService.fetchCurrentProfile()
+        } else if authService.role == "parent" {
+            await reloadChildren()
+        }
+    }
+
+    private func reloadChildren() async {
+        let previousSelection = selectedChildID
+        await childService.fetchChildren()
+        if let previousSelection,
+           childService.children.contains(where: { $0.id == previousSelection }) {
+            selectedChildID = previousSelection
+        } else {
+            selectedChildID = childService.children.first?.id
         }
     }
 
@@ -326,7 +352,13 @@ struct DiscoverView: View {
             .scrollBounceBehavior(.basedOnSize, axes: .vertical)
             .clipped()
             .onChange(of: selectedCategory) { _, category in
-                if let category { withAnimation { proxy.scrollTo(category, anchor: .center) } }
+                if let category {
+                    if reduceMotion {
+                        proxy.scrollTo(category, anchor: .center)
+                    } else {
+                        withAnimation { proxy.scrollTo(category, anchor: .center) }
+                    }
+                }
             }
         }
     }
@@ -614,6 +646,7 @@ struct DiscoverView: View {
 struct OpportunityRow: View {
 
     let opportunity: Opportunity
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
 
@@ -659,21 +692,15 @@ struct OpportunityRow: View {
             )
             .font(.subheadline)
             .foregroundStyle(
-                .secondary
+                .primary.opacity(0.82)
             )
-            .lineLimit(2)
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
 
 
             HStack(spacing: 14) {
 
                 Label(
-                    opportunity.startsAt
-                        .formatted(
-                            date:
-                                .abbreviated,
-                            time:
-                                .omitted
-                        ),
+                    opportunity.startDateDisplayText,
                     systemImage:
                         "calendar"
                 )
@@ -690,7 +717,7 @@ struct OpportunityRow: View {
             }
             .font(.caption)
             .foregroundStyle(
-                .secondary
+                .primary.opacity(0.82)
             )
         }
         .padding(

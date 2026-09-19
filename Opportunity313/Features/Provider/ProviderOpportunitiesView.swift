@@ -182,11 +182,7 @@ struct ProviderOpportunityRow: View {
             .lineLimit(2)
 
             Label(
-                opportunity.startsAt
-                    .formatted(
-                        date: .abbreviated,
-                        time: .shortened
-                    ),
+                opportunity.startDisplayText,
                 systemImage:
                     "calendar"
             )

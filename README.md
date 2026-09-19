@@ -106,6 +106,13 @@ dates, locations, and eligibility values empty instead of guessing. Only
 records whose registration details are still current should be published;
 closed, expired, or underspecified programs remain on the watchlist.
 
+`scripts/import_verified_official_resources.sql` is the reviewed, idempotent
+production import for the currently selected first-party listings. It creates
+verified provider records, publishes the official opportunities with stable
+IDs, and allows `starts_at` to be empty for genuinely ongoing services. Run it
+as one transaction in the Supabase SQL editor, then verify the public feed
+before presenting or releasing the app.
+
 ## Visual polish handoff
 
 See `docs/POLISH_HANDOFF.md`. Polish should preserve the MVP data flows and

@@ -47,7 +47,8 @@ struct ParentChildrenView: View {
                         NavigationLink {
 
                             ParentChildDetailView(
-                                child: child
+                                child: child,
+                                childService: childService
                             )
 
                         } label: {

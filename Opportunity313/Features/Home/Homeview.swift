@@ -1,6 +1,46 @@
 import SwiftUI
 
+private struct OpportunityCardSurface: ViewModifier {
+    @Environment(\.colorScheme) private var colorScheme
+    let cornerRadius: CGFloat
+
+    private var fill: Color {
+        colorScheme == .dark
+            ? Color(red: 0.22, green: 0.20, blue: 0.18)
+            : Color(.systemBackground)
+    }
+
+    func body(content: Content) -> some View {
+        content
+            .background(fill)
+            .clipShape(RoundedRectangle(cornerRadius: cornerRadius))
+            .overlay {
+                RoundedRectangle(cornerRadius: cornerRadius)
+                    .stroke(
+                        colorScheme == .dark
+                            ? Color.orange.opacity(0.28)
+                            : Color(.separator).opacity(0.30),
+                        lineWidth: colorScheme == .dark ? 1.25 : 1
+                    )
+            }
+            .shadow(
+                color: colorScheme == .dark
+                    ? Color.black.opacity(0.35)
+                    : Color.black.opacity(0.08),
+                radius: colorScheme == .dark ? 8 : 5,
+                y: 3
+            )
+    }
+}
+
+extension View {
+    func opportunityCardSurface(cornerRadius: CGFloat = 20) -> some View {
+        modifier(OpportunityCardSurface(cornerRadius: cornerRadius))
+    }
+}
+
 struct HomeView: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var profileService = YouthProfileService()
     @StateObject private var opportunityService = OpportunityService()
     @EnvironmentObject var savedService: SavedOpportunityService
@@ -89,7 +129,9 @@ struct HomeView: View {
                         HStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 10) {
                                 Text("DISCOVER OPPORTUNITIES").font(.caption.bold())
-                                Text(opportunity.title).font(.title2.bold()).lineLimit(3)
+                                Text(opportunity.title)
+                                    .font(.title2.bold())
+                                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                                 Text(opportunity.neighborhood ?? opportunity.city).font(.subheadline)
                                 Text("Explore opportunity  →").font(.subheadline.bold())
                                     .padding(.horizontal, 14).padding(.vertical, 10)
@@ -111,7 +153,7 @@ struct HomeView: View {
                 }
             }
             .tabViewStyle(.page(indexDisplayMode: featured.count > 1 ? .always : .never))
-            .frame(height: 260)
+            .frame(height: dynamicTypeSize.isAccessibilitySize ? 390 : 260)
             .accessibilityLabel("Featured opportunities")
         }
     }
@@ -217,6 +259,7 @@ private func interestSymbol(_ category: String) -> String {
 
 struct RecommendationCard: View {
     @EnvironmentObject var savedService: SavedOpportunityService
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let opportunity: Opportunity
     var showsCategory = true
     var allowsSave = true
@@ -228,8 +271,12 @@ struct RecommendationCard: View {
                     GeometryReader { geometry in
                         Image(opportunityImage(opportunity.category)).resizable().scaledToFill()
                             .frame(width: geometry.size.width, height: 150).clipped()
+                            .accessibilityHidden(true)
                     }.frame(height: 150)
-                }.buttonStyle(.plain).accessibilityLabel("View \(opportunity.title)")
+                }
+                .buttonStyle(.plain)
+                .accessibilityLabel("View \(opportunity.title)")
+                .accessibilityHint("Opens opportunity details")
                 if allowsSave {
                 Button {
                     Task { await savedService.toggleSave(opportunityID: opportunity.id) }
@@ -246,11 +293,16 @@ struct RecommendationCard: View {
                     if showsCategory {
                         Text(opportunity.category).font(.caption.weight(.semibold)).foregroundStyle(.orange)
                     }
-                    Text(opportunity.title).font(.headline).lineLimit(3).frame(height: 64, alignment: .topLeading)
+                    Text(opportunity.title)
+                        .font(.headline)
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                        .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? nil : 64, alignment: .topLeading)
                     Label(opportunity.neighborhood ?? opportunity.city, systemImage: "mappin.and.ellipse")
-                        .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                        .font(.caption)
+                        .foregroundStyle(.primary.opacity(0.82))
+                        .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                     HStack {
-                        Text(opportunity.startsAt, format: .dateTime.month(.abbreviated).day()).font(.caption)
+                        Text(opportunity.startDateDisplayText).font(.caption)
                         Spacer()
                         Text(opportunity.isFree ? "FREE" : (Double(opportunity.costCents) / 100).formatted(.currency(code: "USD")))
                             .font(.subheadline.bold())
@@ -258,15 +310,14 @@ struct RecommendationCard: View {
                 }.foregroundStyle(.primary).padding(16).frame(maxWidth: .infinity, alignment: .leading)
             }.buttonStyle(.plain)
         }
-        .background(Color(.systemBackground))
-        .clipShape(RoundedRectangle(cornerRadius: 20))
-        .overlay(RoundedRectangle(cornerRadius: 20).stroke(Color(.separator).opacity(0.3)))
+        .opportunityCardSurface()
     }
 }
 
 // MARK: - Deadline Card
 
 struct DeadlineCard: View {
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     let opportunity: Opportunity
 
     var body: some View {
@@ -281,15 +332,19 @@ struct DeadlineCard: View {
             VStack(alignment: .leading, spacing: 12) {
                 Text(opportunity.category).font(.caption.weight(.semibold))
                     .foregroundStyle(urgent ? Color.red : Color.orange)
-                Text(opportunity.title).font(.headline).lineLimit(3)
-                    .frame(height: 64, alignment: .topLeading)
+                Text(opportunity.title)
+                    .font(.headline)
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
+                    .frame(minHeight: dynamicTypeSize.isAccessibilitySize ? nil : 64, alignment: .topLeading)
                 if let deadline = opportunity.deadline {
                     Text("Apply by \(deadline.formatted(date: .abbreviated, time: .omitted))")
                         .font(.subheadline.weight(.semibold))
                         .foregroundStyle(urgent ? Color.red : Color.primary)
                 }
                 Text(opportunity.neighborhood ?? opportunity.city)
-                    .font(.caption).foregroundStyle(.secondary).lineLimit(1)
+                    .font(.caption)
+                    .foregroundStyle(.primary.opacity(0.82))
+                    .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 1)
                 HStack {
                     if let days = daysRemaining {
                         Text(days <= 0 ? "Due today" : "\(days) \(days == 1 ? "day" : "days") left")
@@ -304,10 +359,14 @@ struct DeadlineCard: View {
             .foregroundStyle(.primary)
             .padding(16)
             .frame(maxWidth: .infinity, alignment: .leading)
-            .background(urgent ? Color.red.opacity(0.07) : Color(.systemBackground))
-            .clipShape(RoundedRectangle(cornerRadius: 20))
-            .overlay(RoundedRectangle(cornerRadius: 20)
-                .stroke(urgent ? Color.red.opacity(0.4) : Color(.separator).opacity(0.3)))
+            .background(urgent ? Color.red.opacity(0.07) : Color.clear)
+            .opportunityCardSurface()
+            .overlay {
+                if urgent {
+                    RoundedRectangle(cornerRadius: 20)
+                        .stroke(Color.red.opacity(0.55), lineWidth: 1.25)
+                }
+            }
         }
     }
 }

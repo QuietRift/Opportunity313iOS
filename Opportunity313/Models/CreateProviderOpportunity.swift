@@ -19,6 +19,7 @@ struct CreateProviderOpportunity: Encodable {
     let ageMax: Int?
     let gradeMin: Int?
     let gradeMax: Int?
+    let genderEligibility: ProgramGenderEligibility
 
     let startsAt: Date
     let endsAt: Date?
@@ -58,6 +59,7 @@ struct CreateProviderOpportunity: Encodable {
 
         case gradeMin = "grade_min"
         case gradeMax = "grade_max"
+        case genderEligibility = "gender_eligibility"
 
         case startsAt = "starts_at"
         case endsAt = "ends_at"

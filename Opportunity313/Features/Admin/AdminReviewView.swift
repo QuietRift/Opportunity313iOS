@@ -141,13 +141,7 @@ struct AdminOpportunityCard: View {
             HStack(spacing: 14) {
 
                 Label(
-                    opportunity.startsAt
-                        .formatted(
-                            date:
-                                .abbreviated,
-                            time:
-                                .shortened
-                        ),
+                    opportunity.startDisplayText,
                     systemImage:
                         "calendar"
                 )

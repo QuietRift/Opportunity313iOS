@@ -28,6 +28,7 @@ struct CreateOpportunityView: View {
 
     @State private var gradeMin: Int?
     @State private var gradeMax: Int?
+    @State private var genderEligibility: ProgramGenderEligibility = .all
 
     @State private var startsAt =
         Date()
@@ -164,6 +165,12 @@ struct CreateOpportunityView: View {
                 Section(
                     "Eligibility"
                 ) {
+
+                    Picker("Participant Group", selection: $genderEligibility) {
+                        ForEach(ProgramGenderEligibility.allCases) { option in
+                            Text(option.title).tag(option)
+                        }
+                    }
 
                     Picker(
                         "Minimum Grade",
@@ -444,6 +451,8 @@ struct CreateOpportunityView: View {
                         gradeMin,
                     gradeMax:
                         gradeMax,
+                    genderEligibility:
+                        genderEligibility,
                     startsAt:
                         startsAt,
                     endsAt:

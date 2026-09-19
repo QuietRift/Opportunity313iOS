@@ -60,13 +60,8 @@ struct OpportunityDetailView: View {
 
                     DetailRow(
                         icon: "calendar",
-                        title: "Starts",
-                        value:
-                            opportunity.startsAt
-                                .formatted(
-                                    date: .abbreviated,
-                                    time: .shortened
-                                )
+                        title: opportunity.startsAt == nil ? "Availability" : "Starts",
+                        value: opportunity.startDisplayText
                     )
 
                     if let endsAt =
@@ -193,6 +188,12 @@ struct OpportunityDetailView: View {
                             value: gradeText
                         )
                     }
+
+                    DetailRow(
+                        icon: "person.2.fill",
+                        title: "Participant Group",
+                        value: (opportunity.genderEligibility ?? .all).title
+                    )
 
                     DetailRow(
                         icon: "tag",

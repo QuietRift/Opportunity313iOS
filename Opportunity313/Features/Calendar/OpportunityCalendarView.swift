@@ -252,18 +252,19 @@ struct OpportunityCalendarView: View {
 
             // Actual opportunity date
 
-            items.append(
-                OpportunityCalendarItem(
-                    id:
-                        "\(opportunity.id.uuidString)-event",
-                    opportunity:
-                        opportunity,
-                    type:
-                        .event,
-                    date:
-                        opportunity.startsAt
+            if let startsAt = opportunity.startsAt {
+                items.append(
+                    OpportunityCalendarItem(
+                        id:
+                            "\(opportunity.id.uuidString)-event",
+                        opportunity:
+                            opportunity,
+                        type:
+                            .event,
+                        date: startsAt
+                    )
                 )
-            )
+            }
 
             // Registration deadline
 

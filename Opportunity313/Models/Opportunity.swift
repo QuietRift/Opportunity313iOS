@@ -21,8 +21,9 @@ struct Opportunity: Codable, Identifiable, Hashable {
     let ageMax: Int?
     let gradeMin: Int?
     let gradeMax: Int?
+    let genderEligibility: ProgramGenderEligibility?
 
-    let startsAt: Date
+    let startsAt: Date?
     let endsAt: Date?
     let scheduleNote: String?
     let deadline: Date?
@@ -67,6 +68,7 @@ struct Opportunity: Codable, Identifiable, Hashable {
         case ageMax = "age_max"
         case gradeMin = "grade_min"
         case gradeMax = "grade_max"
+        case genderEligibility = "gender_eligibility"
 
         case startsAt = "starts_at"
         case endsAt = "ends_at"
@@ -101,12 +103,33 @@ struct Opportunity: Codable, Identifiable, Hashable {
     }
 }
 
+extension Opportunity {
+    var chronologicalSortDate: Date {
+        startsAt ?? .distantFuture
+    }
+
+    var startDisplayText: String {
+        startsAt?.formatted(date: .abbreviated, time: .shortened) ?? "Ongoing"
+    }
+
+    var startDateDisplayText: String {
+        startsAt?.formatted(date: .abbreviated, time: .omitted) ?? "Ongoing"
+    }
+}
+
 
 extension Opportunity {
     func matchesEligibility(for profile: YouthProfile) -> Bool {
         if let ageGroup = AgeGroup.matching(profile.ageBand),
            !ageGroup.overlaps(minimum: ageMin, maximum: ageMax) {
             return false
+        }
+
+        if let gender = profile.gender,
+           let eligibility = genderEligibility,
+           eligibility != .all {
+            if gender == .boy && eligibility != .boys { return false }
+            if gender == .girl && eligibility != .girls { return false }
         }
 
         guard let grade = profile.grade else { return true }

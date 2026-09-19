@@ -94,6 +94,13 @@ struct ParentCalendarView: View {
 
                 await loadData()
             }
+            .onReceive(
+                NotificationCenter.default.publisher(
+                    for: .managedYouthProfileDidChange
+                )
+            ) { _ in
+                Task { await loadData() }
+            }
         }
     }
 
@@ -299,13 +306,14 @@ struct ParentCalendarView: View {
 
                         savedIDs.contains(
                             $0.id
-                        )
+                        ) && $0.matchesEligibility(for: child)
                     }
 
             for opportunity in
                 savedOpportunities {
 
-                items.append(
+                if let startsAt = opportunity.startsAt {
+                    items.append(
                     ParentCalendarItem(
                         id:
                             "\(child.id.uuidString)-\(opportunity.id.uuidString)-event",
@@ -315,11 +323,10 @@ struct ParentCalendarView: View {
                             opportunity,
                         type:
                             .event,
-                        date:
-                            opportunity
-                                .startsAt
+                        date: startsAt
                     )
-                )
+                    )
+                }
 
 
                 if let deadline =

@@ -26,7 +26,14 @@ struct Opportunity313Tests {
         let child = try JSONDecoder().decode(YouthProfile.self, from: data)
         #expect(child.userId == nil)
         #expect(child.grade == 8)
+        #expect(child.gender == nil)
         #expect(child.accountType == "parent_managed")
+    }
+
+    @Test func parentManagedChildDecodesGender() throws {
+        let data = Data(#"{"id":"00000000-0000-0000-0000-000000000001","user_id":null,"first_name":"Demo","age_band":"13-17","grade":8,"gender":"boy","interests":["Sports"],"accessibility_preferences":[],"account_type":"parent_managed"}"#.utf8)
+        let child = try JSONDecoder().decode(YouthProfile.self, from: data)
+        #expect(child.gender == .boy)
     }
 
     @Test func savePayloadUsesBackendColumnNames() throws {

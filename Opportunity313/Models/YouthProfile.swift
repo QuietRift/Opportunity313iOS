@@ -7,6 +7,29 @@
 
 import Foundation
 
+enum ParticipantGender: String, Codable, CaseIterable, Identifiable {
+    case boy
+    case girl
+
+    var id: String { rawValue }
+    var title: String { rawValue.capitalized }
+}
+
+enum ProgramGenderEligibility: String, Codable, CaseIterable, Identifiable {
+    case all
+    case boys
+    case girls
+
+    var id: String { rawValue }
+
+    var title: String {
+        switch self {
+        case .all: "All / Co-ed"
+        case .boys: "Boys"
+        case .girls: "Girls"
+        }
+    }
+}
 
 // MARK: - Youth Profile
 
@@ -17,6 +40,7 @@ struct YouthProfile: Codable, Identifiable {
     let firstName: String
     let ageBand: String
     let grade: Int?
+    let gender: ParticipantGender?
     let interests: [String]
     let accessibilityPreferences: [String]
     let accountType: String
@@ -28,6 +52,7 @@ struct YouthProfile: Codable, Identifiable {
         case firstName = "first_name"
         case ageBand = "age_band"
         case grade
+        case gender
         case interests
 
         case accessibilityPreferences =
@@ -46,6 +71,7 @@ struct CreateYouthProfile: Encodable {
     let firstName: String
     let ageBand: String
     let grade: Int?
+    let gender: ParticipantGender?
     let interests: [String]
     let accessibilityPreferences: [String]
     let accountType: String
@@ -56,6 +82,7 @@ struct CreateYouthProfile: Encodable {
         case firstName = "first_name"
         case ageBand = "age_band"
         case grade
+        case gender
         case interests
 
         case accessibilityPreferences =
@@ -73,6 +100,7 @@ struct UpdateYouthProfile: Encodable {
     let firstName: String
     let ageBand: String
     let grade: Int?
+    let gender: ParticipantGender?
     let interests: [String]
     let accessibilityPreferences: [String]
 
@@ -81,6 +109,7 @@ struct UpdateYouthProfile: Encodable {
         case firstName = "first_name"
         case ageBand = "age_band"
         case grade
+        case gender
         case interests
 
         case accessibilityPreferences =

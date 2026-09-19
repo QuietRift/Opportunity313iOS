@@ -18,6 +18,7 @@ struct AddChildView: View {
     @State private var firstName = ""
     @State private var ageBand = ""
     @State private var grade: Int?
+    @State private var gender: ParticipantGender?
 
     @State private var relationship =
         "Parent"
@@ -106,6 +107,13 @@ struct AddChildView: View {
                                 .tag(
                                     grade as Int?
                                 )
+                        }
+                    }
+
+                    Picker("Gender", selection: $gender) {
+                        Text("Select gender").tag(nil as ParticipantGender?)
+                        ForEach(ParticipantGender.allCases) { option in
+                            Text(option.title).tag(option as ParticipantGender?)
                         }
                     }
                 }
@@ -288,6 +296,7 @@ struct AddChildView: View {
                     firstName: firstName,
                     ageBand: ageBand,
                     grade: grade,
+                    gender: gender!,
                     interests:
                         Array(
                             selectedInterests
@@ -317,5 +326,6 @@ struct AddChildView: View {
             .isEmpty
         &&
         !ageBand.isEmpty
+        && gender != nil
     }
 }

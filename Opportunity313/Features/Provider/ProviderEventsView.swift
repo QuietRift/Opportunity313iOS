@@ -5,7 +5,9 @@ struct ProviderEventsView: View {
     @StateObject private var opportunityService = ProviderOpportunityService()
 
     private var scheduledOpportunities: [Opportunity] {
-        opportunityService.opportunities.sorted { $0.startsAt < $1.startsAt }
+        opportunityService.opportunities.sorted {
+            $0.chronologicalSortDate < $1.chronologicalSortDate
+        }
     }
 
     var body: some View {

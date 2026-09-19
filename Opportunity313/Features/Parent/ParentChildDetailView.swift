@@ -11,6 +11,9 @@ struct ParentChildDetailView: View {
 
     let child: YouthProfile
 
+    @ObservedObject var childService: ParentManagedYouthService
+    @State private var displayedGender: ParticipantGender?
+
     @StateObject private var opportunityService =
         OpportunityService()
 
@@ -18,6 +21,12 @@ struct ParentChildDetailView: View {
 
     @EnvironmentObject var familySaveService:
         FamilySaveService
+
+    init(child: YouthProfile, childService: ParentManagedYouthService) {
+        self.child = child
+        self.childService = childService
+        _displayedGender = State(initialValue: child.gender)
+    }
 
     var body: some View {
 
@@ -89,6 +98,37 @@ struct ParentChildDetailView: View {
                                 ? "Kindergarten"
                                 : "Grade \(grade)"
                         )
+                    }
+
+                    if let gender = displayedGender {
+                        ProfileInfoRow(
+                            icon: "person.fill",
+                            title: "Gender",
+                            value: gender.title
+                        )
+                    }
+
+                    Menu(displayedGender == nil ? "Set Gender" : "Change Gender") {
+                        ForEach(ParticipantGender.allCases) { gender in
+                            Button(gender.title) {
+                                displayedGender = gender
+                                Task {
+                                    do {
+                                        try await childService.updateChildGender(
+                                            childID: child.id,
+                                            gender: gender
+                                        )
+                                    } catch {
+                                        displayedGender = child.gender
+                                    }
+                                }
+                            }
+                        }
+                    }
+                    .disabled(childService.isLoading)
+
+                    if let error = childService.errorMessage {
+                        Text(error).font(.caption).foregroundStyle(.red)
                     }
                 }
                 .padding()
@@ -398,49 +438,34 @@ struct ParentChildDetailView: View {
                             opportunity.category
                         )
 
-                let gradeMatch =
-                    matchesGrade(
-                        opportunity
-                    )
-
                 return interestMatch &&
-                    gradeMatch
+                    opportunity.matchesEligibility(
+                        for: child.withGender(displayedGender)
+                    )
             }
             .sorted {
 
-                $0.startsAt <
-                $1.startsAt
+                $0.chronologicalSortDate <
+                $1.chronologicalSortDate
             }
     }
 
 
-    // MARK: - Grade Match
+}
 
-    private func matchesGrade(
-        _ opportunity: Opportunity
-    ) -> Bool {
-
-        guard let grade =
-            child.grade else {
-
-            return true
-        }
-
-        if let minimum =
-            opportunity.gradeMin,
-           grade < minimum {
-
-            return false
-        }
-
-        if let maximum =
-            opportunity.gradeMax,
-           grade > maximum {
-
-            return false
-        }
-
-        return true
+private extension YouthProfile {
+    func withGender(_ gender: ParticipantGender?) -> YouthProfile {
+        YouthProfile(
+            id: id,
+            userId: userId,
+            firstName: firstName,
+            ageBand: ageBand,
+            grade: grade,
+            gender: gender,
+            interests: interests,
+            accessibilityPreferences: accessibilityPreferences,
+            accountType: accountType
+        )
     }
 }
 
@@ -450,6 +475,7 @@ struct ParentChildDetailView: View {
 struct ParentRecommendationCard: View {
 
     let opportunity: Opportunity
+    @Environment(\.dynamicTypeSize) private var dynamicTypeSize
 
     var body: some View {
 
@@ -488,22 +514,16 @@ struct ParentRecommendationCard: View {
 
             Text(opportunity.summary)
                 .font(.subheadline)
-                .foregroundStyle(
-                    .secondary
-                )
-                .lineLimit(2)
+            .foregroundStyle(
+                .primary.opacity(0.82)
+            )
+            .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 2)
 
 
             HStack {
 
                 Label(
-                    opportunity.startsAt
-                        .formatted(
-                            date:
-                                .abbreviated,
-                            time:
-                                .omitted
-                        ),
+                    opportunity.startDateDisplayText,
                     systemImage:
                         "calendar"
                 )
@@ -519,19 +539,10 @@ struct ParentRecommendationCard: View {
             }
             .font(.caption)
             .foregroundStyle(
-                .secondary
+                .primary.opacity(0.82)
             )
         }
         .padding()
-        .background(
-            Color(
-                .secondarySystemBackground
-            )
-        )
-        .clipShape(
-            RoundedRectangle(
-                cornerRadius: 18
-            )
-        )
+        .opportunityCardSurface(cornerRadius: 18)
     }
 }
