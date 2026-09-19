@@ -96,6 +96,16 @@ The optional four-role UI test reads `MVP_TEST_PASSWORD`, `MVP_YOUTH_EMAIL`,
 runner's environment. It skips when credentials are absent. Do not commit
 credential-bearing schemes or test fixtures.
 
+## Verified resource data
+
+The current source review is documented in
+`docs/resources/opportunity313_verified_resources_2026-09-19.md`. Its companion
+`docs/resources/opportunity313_resource_candidates.json` contains staging
+records prepared for review and import. The file intentionally keeps unknown
+dates, locations, and eligibility values empty instead of guessing. Only
+records whose registration details are still current should be published;
+closed, expired, or underspecified programs remain on the watchlist.
+
 ## Visual polish handoff
 
 See `docs/POLISH_HANDOFF.md`. Polish should preserve the MVP data flows and
