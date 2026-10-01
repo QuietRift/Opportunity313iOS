@@ -33,6 +33,9 @@ struct MainTabView: View {
                 ProviderTabView()
 
 
+            case "athletics":
+                EventStaffTabView()
+
             case "admin":
 
                 AdminTabView()
@@ -331,38 +334,56 @@ struct ProviderTabView: View {
 // MARK: - Admin Tabs
 
 struct AdminTabView: View {
-
     @Environment(\.colorScheme) private var colorScheme
+    @StateObject private var service = AdminService()
+    @State private var selectedTab = 0
+    @State private var opportunityFilter: AdminOpportunityFilter = .pending
 
     var body: some View {
-
-        TabView {
-
-            AdminReviewView()
-                .tabItem {
-
-                    Label(
-                        "Review",
-                        systemImage:
-                            "checkmark.seal.fill"
-                    )
-                }
-
-
+        TabView(selection: $selectedTab) {
+            AdminDashboardView(service: service, openOpportunities: { filter in
+                opportunityFilter = filter
+                selectedTab = 1
+            }, openPeople: { selectedTab = 2 })
+                .tag(0).tabItem { Label("Dashboard", systemImage: "rectangle.grid.2x2.fill") }
+            AdminReviewView(adminService: service, filter: $opportunityFilter)
+                .tag(1).tabItem { Label("Opportunities", systemImage: "checkmark.seal.fill") }
+                .badge(service.pendingOpportunities.count)
+            AdminPeopleView(service: service)
+                .tag(2).tabItem { Label("People", systemImage: "person.2.fill") }
+            SchoolTicketAdministrationView()
+                .tag(3).tabItem { Label("Ticketing", systemImage: "ticket") }
             AccountView()
-                .tabItem {
-
-                    Label(
-                        "Account",
-                        systemImage:
-                            "person.crop.circle.fill"
-                    )
-                }
+                .tag(4).tabItem { Label("Account", systemImage: "person.crop.circle.fill") }
         }
-        .toolbarBackground(
-            Opportunity313Brand.surface(for: colorScheme),
-            for: .tabBar
-        )
+        .toolbarBackground(Opportunity313Brand.surface(for: colorScheme), for: .tabBar)
         .toolbarBackground(.visible, for: .tabBar)
+        .task { await service.refresh() }
+    }
+}
+
+struct EventStaffTabView: View {
+    @StateObject private var schoolRequests = SchoolVerificationService()
+    @Environment(\.scenePhase) private var scenePhase
+    var body: some View {
+        TabView {
+            NavigationStack { TicketEventsView(managedOnly: true) }
+                .tabItem { Label("Events", systemImage: "calendar") }
+            SchoolVerificationQueueView(service: schoolRequests)
+                .tabItem { Label("Requests", systemImage: "checkmark.seal") }
+                .badge(schoolRequests.queue.filter { $0.status == "pending" }.count)
+            AccountView()
+                .tabItem { Label("Profile", systemImage: "person.crop.circle") }
+        }
+        .task {
+            while !Task.isCancelled {
+                await schoolRequests.loadQueue()
+                do { try await Task.sleep(for: .seconds(30)) }
+                catch { break }
+            }
+        }
+        .onChange(of: scenePhase) { _, phase in
+            if phase == .active { Task { await schoolRequests.loadQueue() } }
+        }
     }
 }

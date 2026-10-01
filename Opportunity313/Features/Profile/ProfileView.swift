@@ -38,9 +38,18 @@ struct ProfileView: View {
 
                             profileHeader(profile)
 
+                            NavigationLink { TicketHubView() } label: {
+                                Label("Event Tickets", systemImage: "ticket")
+                                    .frame(maxWidth: .infinity, alignment: .leading).padding()
+                                    .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 18))
+                            }
+
+                            SchoolProfileCard(youthProfileID: profile.id)
+
                             profileDetails(profile)
 
                             interestsSection(profile)
+
 
                             appearanceSection
 

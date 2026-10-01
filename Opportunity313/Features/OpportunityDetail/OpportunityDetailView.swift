@@ -136,6 +136,13 @@ struct OpportunityDetailView: View {
                         )
                     }
 
+                    TransitDirectionsSection(
+                        destination: opportunity.street.map {
+                            formattedAddress(street: $0, city: opportunity.city, state: opportunity.state, postalCode: opportunity.postalCode)
+                        } ?? "\(opportunity.locationName), \(opportunity.city), \(opportunity.state)",
+                        venueName: opportunity.locationName
+                    )
+
                     if let neighborhood =
                         opportunity.neighborhood {
 

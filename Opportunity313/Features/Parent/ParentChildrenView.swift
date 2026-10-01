@@ -107,6 +107,9 @@ struct ParentChildrenView: View {
                 await childService
                     .fetchChildren()
             }
+            .onReceive(NotificationCenter.default.publisher(for: .managedYouthProfileDidChange)) { _ in
+                Task { await childService.fetchChildren() }
+            }
             .refreshable {
 
                 await childService

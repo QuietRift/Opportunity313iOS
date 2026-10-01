@@ -11,7 +11,10 @@ struct ParentChildDetailView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
-    let child: YouthProfile
+    let initialChild: YouthProfile
+    private var child: YouthProfile { childService.children.first { $0.id == initialChild.id } ?? initialChild }
+    @State private var showEdit = false
+    @StateObject private var editService = YouthProfileService()
 
     @ObservedObject var childService: ParentManagedYouthService
     @State private var displayedGender: ParticipantGender?
@@ -25,7 +28,7 @@ struct ParentChildDetailView: View {
         FamilySaveService
 
     init(child: YouthProfile, childService: ParentManagedYouthService) {
-        self.child = child
+        self.initialChild = child
         self.childService = childService
         _displayedGender = State(initialValue: child.gender)
     }
@@ -102,6 +105,12 @@ struct ParentChildDetailView: View {
                         )
                     }
 
+                    ProfileInfoRow(icon: "mappin", title: "ZIP / Neighborhood", value: "Not collected")
+                    ProfileInfoRow(icon: "tag", title: "Preferred Opportunity Categories", value: "Recommendations use the interests below")
+                    ProfileInfoRow(icon: "accessibility", title: "Accessibility Needs (Optional)", value: child.accessibilityPreferences.isEmpty ? "Not provided" : child.accessibilityPreferences.joined(separator: ", "))
+                    ProfileInfoRow(icon: "bus", title: "Transportation Preference / Needs", value: "Not collected")
+                    ProfileInfoRow(icon: "person.2", title: "Guardian Relationship", value: childService.relationships[child.id]?.capitalized ?? "Not available")
+
                     if let gender = displayedGender {
                         ProfileInfoRow(
                             icon: "person.fill",
@@ -144,6 +153,8 @@ struct ParentChildDetailView: View {
                         cornerRadius: 18
                     )
                 )
+
+                SchoolProfileCard(youthProfileID: child.id)
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Child Access").font(.title2.bold())
@@ -400,6 +411,17 @@ struct ParentChildDetailView: View {
             Opportunity313Brand.canvas(for: colorScheme)
                 .ignoresSafeArea()
         )
+        .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Button("Edit") { showEdit = true }
+            }
+        }
+        .sheet(isPresented: $showEdit) {
+            EditYouthProfileView(profile: child, profileService: editService) { name, age, grade, interests, accessibility in
+                try await childService.updateChild(child, firstName: name, ageBand: age,
+                                                   grade: grade, interests: interests, accessibility: accessibility)
+            }
+        }
         .opportunity313PageBackground()
         .navigationTitle(child.firstName)
         .navigationBarTitleDisplayMode(
