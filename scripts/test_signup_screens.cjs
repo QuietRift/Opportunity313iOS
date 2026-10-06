@@ -69,7 +69,13 @@ const server=http.createServer((req,res)=>{
  const visual=await fixture();
  for(const role of ['parent','provider'])for(const width of [1024,720,390]){await visual.page.setViewportSize({width,height:1000});await visual.page.goto(`${base}/signup/${role}/`);await noOverflow(visual.page);await screenshot(visual.page,`${role}-signup-${width}.png`);}
  await visual.page.goto(`${base}/signup/`);await noOverflow(visual.page);await screenshot(visual.page,'account-choice-mobile.png');
- for(const item of [a,b,c,d,e,f,g,h,visual])assert.deepEqual(item.errors,[]);
+ // Signup controls stay unavailable until their deferred script is attached.
+ const startup=await fixture();let release;const held=new Promise(resolve=>{release=resolve;});
+ await startup.page.route('**/signup/signup.js',route=>release(route));
+ await startup.page.goto(`${base}/signup/parent/`,{waitUntil:'commit'});const route=await held;
+ await startup.page.locator('#switch-mode').waitFor();assert(await startup.page.locator('#switch-mode').isDisabled());assert(await startup.page.locator('#password').isDisabled());
+ await route.continue();await startup.page.locator('#switch-mode').click();await startup.page.getByRole('heading',{name:'Sign in to your parent account'}).waitFor();
+ for(const item of [a,b,c,d,e,f,g,h,visual,startup])assert.deepEqual(item.errors,[]);
  console.log('PASS: account choice, parent/provider signup, password validation, confirmation/resend, verified role onboarding, profile save/draft retry, existing account isolation, provider handoff, parent completion, expired session renewal, responsive layouts. Fixtures only; no live writes.');
  await browser.close();await new Promise(resolve=>server.close(resolve));
 })().catch(error=>{console.error(error);server.close();process.exit(1);});
