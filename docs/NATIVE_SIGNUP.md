@@ -23,4 +23,6 @@ The form keeps the existing navy/orange identity, system fonts, left-aligned lab
 - Final unsigned Release build for generic iPhone passed. Simulator Debug build passed.
 - Four relevant UI checks passed across the final targeted runs: Parent validation/password visibility, Provider menu routing, signup opening, and startup reaching sign-in. They use an isolated iPhone simulator and fixture text; they never submit an actual signup. Earlier fixture gestures were corrected after exposing a stale Provider sheet selection, which was fixed with item-based presentation.
 
+The final Parent UI test and all its selected suites reported passing in the test log. Xcode then stalled collecting the result bundle; that process was stopped after completion. The final Parent screenshot attachment could not be exported from that bundle. Other native screenshots were exported from earlier runs of the same app source.
+
 Real email delivery, a real-account confirmation/sign-in round trip, signed archive, physical-device behavior, and TestFlight upload remain unverified. This change does not upload a build to App Store Connect.
