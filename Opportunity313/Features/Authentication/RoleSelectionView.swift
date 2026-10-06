@@ -71,9 +71,9 @@ struct RoleSelectionView: View {
                         }
 
                         RoleCard(
-                            title: "I'm an Opportunity Provider",
+                            title: "I represent an Organization",
                             description:
-                                "Share programs and opportunities with Detroit youth.",
+                                "Create an organization profile and submit opportunities for admin approval.",
                             icon: "building.2.fill",
                             selected: selectedRole == "provider"
                         ) {

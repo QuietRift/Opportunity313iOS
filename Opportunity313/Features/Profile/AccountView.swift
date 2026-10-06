@@ -134,7 +134,7 @@ struct AccountView: View {
     private var displayRole: String {
         switch authService.role {
         case "parent": "Parent / Guardian"
-        case "provider": "Provider"
+        case "provider": "Organization"
         case "athletics": "Athletics"
         case "admin": "Administrator"
         default: "User"

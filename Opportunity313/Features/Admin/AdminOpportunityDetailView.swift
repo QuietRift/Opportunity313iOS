@@ -61,12 +61,16 @@ struct AdminDecisionSheet: View {
                     }
                 }
                 if let organization {
-                    Section("Provider") {
+                    Section("Organization") {
                         Text(organization.name).font(.headline)
                         LabeledContent("Verification", value: organization.verificationStatus.capitalized)
                         if let value = organization.description { Text(value) }
                         if let value = organization.contactName { LabeledContent("Contact", value: value) }
                         if let value = organization.contactEmail { LabeledContent("Email", value: value) }
+                        if let value = organization.contactPhone { LabeledContent("Phone", value: value) }
+                        if let value = organization.serviceArea { LabeledContent("Service area", value: value) }
+                        if let value = organization.address { LabeledContent("Address", value: value) }
+                        if let value = organization.city { LabeledContent("City", value: value) }
                         if let value = organization.website { LabeledContent("Website", value: value) }
                     }
                 }

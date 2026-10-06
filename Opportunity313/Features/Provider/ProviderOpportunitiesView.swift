@@ -208,30 +208,6 @@ struct ProviderOpportunityRow: View {
 
     private var statusLabel: String {
 
-        switch opportunity.status {
-
-        case "pending_review":
-            return "Pending Review"
-
-        case "published":
-            return "Published"
-
-        case "draft":
-            return "Draft"
-
-        case "paused":
-            return "Paused"
-
-        case "closed":
-            return "Closed"
-
-        default:
-            return opportunity.status
-                .replacingOccurrences(
-                    of: "_",
-                    with: " "
-                )
-                .capitalized
-        }
+        opportunity.organizationApprovalStatus
     }
 }

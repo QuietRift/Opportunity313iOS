@@ -14,6 +14,13 @@ struct AdminTests {
         ]
         return try JSONDecoder().decode(Opportunity.self, from: JSONSerialization.data(withJSONObject: object))
     }
+    @Test func organizationStatusesMatchAdminDecisions() throws {
+        #expect(try opportunity(status: "closed", verification: "rejected").organizationApprovalStatus == "Rejected")
+        #expect(try opportunity(status: "pending_review", verification: "pending").organizationApprovalStatus == "Pending")
+        #expect(try opportunity(status: "published", verification: "verified").organizationApprovalStatus == "Approved")
+        #expect(try opportunity(status: "paused", verification: "verified").organizationApprovalStatus == "Paused")
+    }
+
     @Test func rejectedRecordsRemainSeparateFromApprovedAndPaused() throws {
         let rejected = try opportunity(status: "closed", verification: "rejected")
         #expect(AdminOpportunityFilter.rejected.includes(rejected))

@@ -244,7 +244,7 @@ struct ProviderTabView: View {
                 providerService.organization == nil {
 
                 ProgressView(
-                    "Loading provider..."
+                    "Loading organization..."
                 )
 
             } else if let organization =
@@ -252,7 +252,7 @@ struct ProviderTabView: View {
 
                 TabView(selection: $selectedTab) {
 
-                    ProviderHomeView(onOpportunities: { selectedTab = 1 }, onEvents: { selectedTab = 2 }, onAccount: { selectedTab = 3 })
+                    ProviderHomeView(organization: organization, onOpportunities: { selectedTab = 1 }, onEvents: { selectedTab = 2 }, onAccount: { selectedTab = 3 })
                         .tag(0)
                         .tabItem {
 
@@ -291,7 +291,7 @@ struct ProviderTabView: View {
                         }
 
 
-                    AccountView()
+                    OrganizationProfileView(service: providerService)
                         .tag(3)
                         .tabItem {
 
@@ -310,7 +310,7 @@ struct ProviderTabView: View {
 
             } else if let error = providerService.errorMessage {
                 VStack(spacing: 16) {
-                    ContentUnavailableView("Unable to Load Provider", systemImage: "exclamationmark.triangle", description: Text(error))
+                    ContentUnavailableView("Unable to Load Organization", systemImage: "exclamationmark.triangle", description: Text(error))
                     Button("Try Again") { Task { await providerService.fetchOrganization() } }
                     AccountView()
                 }

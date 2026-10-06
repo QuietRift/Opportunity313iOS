@@ -11,6 +11,10 @@ struct ProviderHomeView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    let organization: Organization
+    @StateObject private var submissions = ProviderOpportunityService()
+    @State private var showSubmit = false
+
     var onOpportunities: () -> Void = {}
     var onEvents: () -> Void = {}
     var onAccount: () -> Void = {}
@@ -35,16 +39,35 @@ struct ProviderHomeView: View {
                             .font(.subheadline)
                             .foregroundStyle(.secondary)
 
-                        Text("Provider Dashboard")
+                        Text("Organization Dashboard")
                             .font(.largeTitle)
                             .fontWeight(.bold)
 
                         Text(
-                            "Connect Detroit youth with opportunities."
+                            organization.name
                         )
                         .foregroundStyle(.secondary)
                     }
 
+                    Label("Verification: \(organization.verificationStatus.capitalized)", systemImage: "checkmark.shield")
+                    Text("Every submission is reviewed by an administrator before it becomes public.")
+                        .foregroundStyle(.secondary)
+                    Button { showSubmit = true } label: {
+                        Label("Submit Opportunity", systemImage: "plus.circle.fill")
+                            .frame(maxWidth: .infinity).padding(8)
+                    }.buttonStyle(.borderedProminent)
+                    VStack(alignment: .leading, spacing: 12) {
+                        Text("Submission Status").font(.headline)
+                        if submissions.isLoading { ProgressView("Loading submissions…") }
+                        else if let error = submissions.errorMessage {
+                            Text(error).foregroundStyle(.red)
+                            Button("Try Again") { Task { await reload() } }
+                        } else {
+                            ForEach(["Pending", "Approved", "Rejected"], id: \.self) { status in
+                                LabeledContent(status, value: "\(submissions.opportunities.filter { $0.organizationApprovalStatus == status }.count)")
+                            }
+                        }
+                    }
                     Button(action: onOpportunities) {
                         ProviderDashboardCard(
                             title: "Opportunities",
@@ -70,9 +93,9 @@ struct ProviderHomeView: View {
 
                     Button(action: onAccount) {
                         ProviderDashboardCard(
-                            title: "Account",
+                            title: "Organization Profile",
                             description:
-                                "View your profile and account settings.",
+                                "View and edit your organization’s information.",
                             icon:
                                 "person.crop.circle.fill"
                         )
@@ -90,7 +113,13 @@ struct ProviderHomeView: View {
             )
         }
         .opportunity313PageBackground()
+        .task { await reload() }
+        .refreshable { await reload() }
+        .sheet(isPresented: $showSubmit) {
+            CreateOpportunityView(organization: organization, opportunityService: submissions)
+        }
     }
+    private func reload() async { await submissions.fetchOpportunities(organizationID: organization.id) }
 }
 
 
