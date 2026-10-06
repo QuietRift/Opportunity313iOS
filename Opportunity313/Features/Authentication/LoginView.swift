@@ -4,7 +4,7 @@ struct LoginView: View {
     @EnvironmentObject var authService: AuthService
     @State private var email = ""
     @State private var password = ""
-    @State private var showSignUp = false
+    @State private var signupAccountType: SignupAccountType?
     @State private var showChildAccess = false
 
     var body: some View {
@@ -31,8 +31,8 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .sheet(isPresented: $showSignUp) {
-                SignUpView().environmentObject(authService)
+            .sheet(item: $signupAccountType) { type in
+                SignUpView(accountType: type).environmentObject(authService)
             }
             .sheet(isPresented: $showChildAccess) {
                 ChildAccessLoginView().environmentObject(authService)
@@ -93,9 +93,20 @@ struct LoginView: View {
             }
             .disabled(authService.isLoading || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
 
-            Button("Create an account") { showSignUp = true }
+            Button("Create a parent account") { signupAccountType = .parent }
                 .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityIdentifier("createParentAccount")
+                .disabled(authService.isLoading)
+
+            Menu("Other account types") {
+                Button("Provider / Organization") { signupAccountType = .provider }
+                Button("Young adult (18–24)") { signupAccountType = .youth }
+            }
+            .font(.subheadline)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .accessibilityIdentifier("otherSignupAccountTypes")
+            .disabled(authService.isLoading)
         }
         .padding(22)
         .background(Opportunity313Brand.warmSurface)

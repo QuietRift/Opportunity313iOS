@@ -25,8 +25,11 @@ final class AuthService: ObservableObject {
     @Published private(set) var isResolvingAccount = true
     @Published private(set) var accountError: String?
 
-    private let supabase =
-        SupabaseManager.shared.client
+    private let supabase: SupabaseClient
+
+    init(client: SupabaseClient = SupabaseManager.shared.client) {
+        supabase = client
+    }
 
 
     // MARK: - Observe Auth State
@@ -108,30 +111,32 @@ final class AuthService: ObservableObject {
 
     // MARK: - Sign Up
 
-    func signUp(
-        email: String,
-        password: String
-    ) async {
+    enum SignupOutcome: Equatable {
+        case confirmationRequired
+        case signedIn
+    }
 
+    func signUp(draft: SignupDraft) async -> SignupOutcome? {
+        guard !isLoading else { return nil }
+        guard draft.isValid else {
+            errorMessage = "Check your name, email, and matching passwords before continuing."
+            return nil
+        }
         isLoading = true
         errorMessage = nil
-
-        defer {
-            isLoading = false
-        }
+        defer { isLoading = false }
 
         do {
-
-            try await supabase.auth
-                .signUp(
-                    email: email,
-                    password: password
-                )
-
+            let data: [String: AnyJSON] = draft.metadata.mapValues { .string($0) }
+            let result = try await supabase.auth.signUp(
+                email: draft.cleanEmail,
+                password: draft.password,
+                data: data
+            )
+            return result.session == nil ? .confirmationRequired : .signedIn
         } catch {
-
-            errorMessage =
-                error.localizedDescription
+            errorMessage = error.localizedDescription
+            return nil
         }
     }
 
@@ -281,9 +286,25 @@ final class AuthService: ObservableObject {
                         await switchAccount()
                         return
                     }
-                    role = nil
-                    needsOnboarding = true
-                    hasYouthProfile = false
+                    // Signup metadata only records the user's requested experience.
+                    // Authorization still comes from user_roles and the authenticated RPC.
+                    if account.emailConfirmedAt != nil,
+                       let choice = SignupAccountType.onboardingChoice(
+                           existingRoles: roles.map(\.role),
+                           preference: account.userMetadata["signup_account_type"]?.stringValue
+                       ) {
+                        let _: String = try await supabase
+                            .rpc("claim_onboarding_role", params: ["requested_role": choice.rawValue])
+                            .execute().value
+                        role = choice.rawValue
+                        needsOnboarding = false
+                        if choice == .youth { await loadYouthProfile() }
+                        else { hasYouthProfile = false }
+                    } else {
+                        role = nil
+                        needsOnboarding = true
+                        hasYouthProfile = false
+                    }
                 } catch let error as AuthError {
                     switch error {
                     case .sessionMissing:
