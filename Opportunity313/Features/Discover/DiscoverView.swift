@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DiscoverView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
     private let categoryCatalog = [
@@ -111,6 +112,7 @@ struct DiscoverView: View {
                 )
             }
             .task { await reload() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await opportunityService.fetchOpportunities() } } }
             .refreshable { await reload() }
             .onReceive(
                 NotificationCenter.default.publisher(

@@ -43,7 +43,7 @@ struct AccountView: View {
                         NavigationLink { TicketEventsView(managedOnly: true) } label: { row("Event Check-In", icon: "qrcode.viewfinder") }
                     }
                     NavigationLink {
-                        ProfileMessageView(title: "Notifications", icon: "bell", message: "There are no in-app notifications available yet. Check your calendar for saved opportunity dates and deadlines.")
+                        OpportunityAlertsView()
                     } label: { row("Notifications", icon: "bell") }
                     NavigationLink { ProfileHelpView() } label: { row("Help & Support", icon: "questionmark.circle") }
                     NavigationLink { ProfileSettingsView() } label: { row("Account Settings", icon: "gearshape") }

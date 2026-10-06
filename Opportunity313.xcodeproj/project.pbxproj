@@ -13,6 +13,7 @@
 		1BCCFE93305CE0B800C1F434 /* Realtime in Frameworks */ = {isa = PBXBuildFile; productRef = 1BCCFE92305CE0B800C1F434 /* Realtime */; };
 		1BCCFE95305CE0B800C1F434 /* Storage in Frameworks */ = {isa = PBXBuildFile; productRef = 1BCCFE94305CE0B800C1F434 /* Storage */; };
 		1BCCFE97305CE0B800C1F434 /* Supabase in Frameworks */ = {isa = PBXBuildFile; productRef = 1BCCFE96305CE0B800C1F434 /* Supabase */; };
+		CA1000000000000000000001 /* FirebaseMessaging in Frameworks */ = {isa = PBXBuildFile; productRef = CA1000000000000000000002 /* FirebaseMessaging */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -60,6 +61,7 @@
 		1BCCFE5E305CDFF900C1F434 /* Frameworks */ = {
 			isa = PBXFrameworksBuildPhase;
 			files = (
+				CA1000000000000000000001 /* FirebaseMessaging in Frameworks */,
 				1BCCFE91305CE0B800C1F434 /* PostgREST in Frameworks */,
 				1BCCFE8F305CE0B800C1F434 /* Functions in Frameworks */,
 				1BCCFE97305CE0B800C1F434 /* Supabase in Frameworks */,
@@ -119,6 +121,7 @@
 			);
 			name = Opportunity313;
 			packageProductDependencies = (
+				CA1000000000000000000002 /* FirebaseMessaging */,
 				1BCCFE8C305CE0B800C1F434 /* Auth */,
 				1BCCFE8E305CE0B800C1F434 /* Functions */,
 				1BCCFE90305CE0B800C1F434 /* PostgREST */,
@@ -205,6 +208,7 @@
 			mainGroup = 1BCCFE58305CDFF900C1F434;
 			minimizedProjectReferenceProxies = 1;
 			packageReferences = (
+				CA1000000000000000000003 /* firebase-ios-sdk */,
 				1BCCFE8B305CE0B800C1F434 /* XCRemoteSwiftPackageReference "supabase-swift" */,
 			);
 			preferredProjectObjectVersion = 77;
@@ -400,6 +404,9 @@
 				DEVELOPMENT_TEAM = QCXT66T4DU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = Opportunity313/Opportunity313.entitlements;
+				APS_ENVIRONMENT = development;
+				INFOPLIST_FILE = Configuration/AppInfo.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan event tickets and photograph a school ID to request school verification. ID images are not saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find bus directions from your current location to an event.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -433,6 +440,9 @@
 				DEVELOPMENT_TEAM = QCXT66T4DU;
 				ENABLE_PREVIEWS = YES;
 				GENERATE_INFOPLIST_FILE = YES;
+				CODE_SIGN_ENTITLEMENTS = Opportunity313/Opportunity313.entitlements;
+				APS_ENVIRONMENT = production;
+				INFOPLIST_FILE = Configuration/AppInfo.plist;
 				INFOPLIST_KEY_NSCameraUsageDescription = "Scan event tickets and photograph a school ID to request school verification. ID images are not saved.";
 				INFOPLIST_KEY_NSLocationWhenInUseUsageDescription = "Find bus directions from your current location to an event.";
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
@@ -578,6 +588,11 @@
 /* End XCConfigurationList section */
 
 /* Begin XCRemoteSwiftPackageReference section */
+        CA1000000000000000000003 /* firebase-ios-sdk */ = {
+            isa = XCRemoteSwiftPackageReference;
+            repositoryURL = "https://github.com/firebase/firebase-ios-sdk";
+            requirement = { kind = exactVersion; version = 12.4.0; };
+        };
 		1BCCFE8B305CE0B800C1F434 /* XCRemoteSwiftPackageReference "supabase-swift" */ = {
 			isa = XCRemoteSwiftPackageReference;
 			repositoryURL = "https://github.com/supabase/supabase-swift";
@@ -589,6 +604,11 @@
 /* End XCRemoteSwiftPackageReference section */
 
 /* Begin XCSwiftPackageProductDependency section */
+        CA1000000000000000000002 /* FirebaseMessaging */ = {
+            isa = XCSwiftPackageProductDependency;
+            package = CA1000000000000000000003 /* firebase-ios-sdk */;
+            productName = FirebaseMessaging;
+        };
 		1BCCFE8C305CE0B800C1F434 /* Auth */ = {
 			isa = XCSwiftPackageProductDependency;
 			package = 1BCCFE8B305CE0B800C1F434 /* XCRemoteSwiftPackageReference "supabase-swift" */;

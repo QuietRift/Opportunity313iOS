@@ -1,6 +1,7 @@
 import SwiftUI
 
 private struct OpportunityCardSurface: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
 
@@ -38,6 +39,7 @@ extension View {
 }
 
 struct HomeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var profileService = YouthProfileService()
@@ -71,6 +73,7 @@ struct HomeView: View {
             .background(Opportunity313Brand.canvas(for: colorScheme).opacity(colorScheme == .dark ? 1 : 0.34))
             .toolbar(.hidden, for: .navigationBar)
             .task { await reload() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await opportunityService.fetchOpportunities() } } }
             .refreshable { await reload() }
             .sheet(isPresented: $showUpdates) {
                 NavigationStack {

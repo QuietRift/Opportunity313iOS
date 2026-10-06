@@ -20,6 +20,7 @@ final class OpportunityService: ObservableObject {
 
     func fetchOpportunities() async {
 
+        guard !isLoading else { return }
         isLoading = true
         errorMessage = nil
         defer { isLoading = false }
