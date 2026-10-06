@@ -21,7 +21,9 @@ struct ContentView: View {
 
         Group {
 
-            if authService.isResolvingAccount {
+            if authService.isRecoveringPassword {
+                PasswordResetView()
+            } else if authService.isResolvingAccount {
                 ProgressView("Loading account...")
             } else if let error = authService.accountError {
                 VStack(spacing: 16) {

@@ -6,6 +6,47 @@ import Testing
 // All HTTP calls are intercepted; no real signup, email, or backend write occurs.
 @Suite(.serialized)
 struct SignupAuthTests {
+    @Test @MainActor func savedChildCanRetryCodeWithoutCreatingAnotherProfile() async throws {
+        let (client, fixture) = makeClient("childRetry")
+        try await client.auth.signIn(email: "fixture@example.org", password: "fixture-only-password")
+        let children = ParentManagedYouthService(client: client)
+        let id = try await children.createChild(firstName: "Fixture Child", ageBand: "9-12", grade: 4, gender: .girl, interests: ["Arts"], accessibilityPreferences: [], relationship: "Parent")
+        let access = ChildAccessService(client: client)
+        await access.generate(for: id)
+        #expect(access.generatedCode == nil)
+        #expect(access.errorMessage != nil)
+        await access.generate(for: id)
+        #expect(access.generatedCode == "O313-ABCD-EFGH-JKLM")
+        #expect(access.expiresAt != nil)
+        #expect(access.errorMessage == nil)
+        let calls = SignupFixtureProtocol.recorder.requests(fixture)
+        #expect(calls.filter { $0.url?.path == "/rest/v1/rpc/create_parent_managed_youth" }.count == 1)
+        #expect(calls.filter { $0.url?.path == "/functions/v1/child-access" }.count == 2)
+    }
+    @Test @MainActor func malformedOrExpiredChildCodesAreNeverDisplayed() async {
+        for scenario in ["childMalformed", "childExpired"] {
+            let (client, _) = makeClient(scenario)
+            let access = ChildAccessService(client: client)
+            await access.generate(for: UUID())
+            #expect(access.generatedCode == nil)
+            #expect(access.expiresAt == nil)
+            #expect(access.errorMessage != nil)
+        }
+    }
+
+    @Test @MainActor func recoveryRequiresValidOTPBeforeChangingPassword() async throws {
+        let (client, fixture) = makeClient("newParent")
+        let service = AuthService(client: client)
+        #expect(await service.finishPasswordReset(password: "new-password", confirmation: "new-password") == false)
+        #expect(await service.requestPasswordReset(email: "fixture@example.org"))
+        #expect(await service.verifyPasswordReset(email: "fixture@example.org", code: "123456"))
+        #expect(service.isRecoveringPassword)
+        #expect(await service.finishPasswordReset(password: "new-password", confirmation: "mismatch") == false)
+        #expect(await service.finishPasswordReset(password: "new-password", confirmation: "new-password"))
+        #expect(!service.isRecoveringPassword)
+        #expect(SignupFixtureProtocol.recorder.requests(fixture).filter { $0.url?.path == "/auth/v1/user" && $0.httpMethod == "PUT" }.count == 1)
+    }
+
     @Test @MainActor func confirmationRequiredSignupPreservesParentChoiceAndName() async throws {
         let (client, fixture) = makeClient("confirmation")
         let service = AuthService(client: client)
@@ -136,8 +177,15 @@ private final class SignupFixtureProtocol: URLProtocol, @unchecked Sendable {
         var status = 200; let payload: Any
         switch request.url?.path {
         case "/auth/v1/signup": payload = scenario == "confirmation" ? user : session
-        case "/auth/v1/token": payload = session
+        case "/auth/v1/token", "/auth/v1/verify": payload = session
+        case "/auth/v1/recover": payload = [:]
         case "/auth/v1/user": payload = user
+        case "/rest/v1/rpc/create_parent_managed_youth": payload = "00000000-0000-0000-0000-000000000041"
+        case "/rest/v1/guardian_relationships": payload = []
+        case "/functions/v1/child-access":
+            let count = Self.recorder.requests(fixture).filter { $0.url?.path == "/functions/v1/child-access" }.count
+            if scenario == "childRetry" && count == 1 { status = 500; payload = ["error": "Fixture service unavailable"] }
+            else { payload = ["code": scenario == "childMalformed" ? "invalid" : "O313-ABCD-EFGH-JKLM", "expiresAt": scenario == "childExpired" ? "2020-01-01T00:00:00Z" : "2099-01-01T00:00:00Z"] }
         case "/rest/v1/user_roles": payload = scenario == "existingParent" ? [["role": "parent"]] : []
         case "/rest/v1/rpc/claim_onboarding_role":
             let count = Self.recorder.requests(fixture).filter { $0.url?.path.contains("claim_onboarding_role") == true }.count

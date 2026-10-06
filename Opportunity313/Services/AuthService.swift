@@ -18,6 +18,7 @@ final class AuthService: ObservableObject {
 
     @Published var displayName = ""
     @Published var email = ""
+    @Published private(set) var isRecoveringPassword = false
     @Published var role: String?
     @Published var needsOnboarding = false
     @Published var hasYouthProfile = false
@@ -36,9 +37,11 @@ final class AuthService: ObservableObject {
 
     func observeAuthState() async {
 
-        for await (_, session) in
+        for await (event, session) in
             supabase.auth.authStateChanges {
 
+            if event == .passwordRecovery { isRecoveringPassword = true }
+            if event == .signedOut { isRecoveringPassword = false }
             let shouldLoadAccount = userID != session?.user.id || role == nil
             userID = session?.user.id
             displayName = session?.user.userMetadata["full_name"]?.stringValue ?? ""
@@ -140,6 +143,41 @@ final class AuthService: ObservableObject {
         }
     }
 
+
+    // Password recovery uses the one-time code in the configured recovery email.
+    func requestPasswordReset(email: String) async -> Bool {
+        guard !isLoading else { return false }
+        isLoading = true; errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await supabase.auth.resetPasswordForEmail(email.trimmingCharacters(in: .whitespacesAndNewlines))
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
+    }
+
+    func verifyPasswordReset(email: String, code: String) async -> Bool {
+        guard !isLoading else { return false }
+        isLoading = true; errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let response = try await supabase.auth.verifyOTP(email: email.trimmingCharacters(in: .whitespacesAndNewlines), token: code.trimmingCharacters(in: .whitespacesAndNewlines), type: .recovery)
+            guard response.session != nil else { errorMessage = "The reset code did not open a recovery session."; return false }
+            isRecoveringPassword = true
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
+    }
+
+    func finishPasswordReset(password: String, confirmation: String) async -> Bool {
+        guard !isLoading, isRecoveringPassword, password.count >= 8, password == confirmation else { return false }
+        isLoading = true; errorMessage = nil
+        defer { isLoading = false }
+        do {
+            try await supabase.auth.update(user: UserAttributes(password: password))
+            isRecoveringPassword = false
+            await refreshUserState()
+            return true
+        } catch { errorMessage = error.localizedDescription; return false }
+    }
 
     // MARK: - Resend Confirmation
 

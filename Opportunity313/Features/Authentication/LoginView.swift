@@ -5,6 +5,7 @@ struct LoginView: View {
     @State private var email = ""
     @State private var password = ""
     @State private var signupAccountType: SignupAccountType?
+    @State private var showPasswordRecovery = false
     @State private var showChildAccess = false
 
     var body: some View {
@@ -34,6 +35,7 @@ struct LoginView: View {
             .sheet(item: $signupAccountType) { type in
                 SignUpView(accountType: type).environmentObject(authService)
             }
+            .sheet(isPresented: $showPasswordRecovery) { PasswordRecoveryRequestView().environmentObject(authService) }
             .sheet(isPresented: $showChildAccess) {
                 ChildAccessLoginView().environmentObject(authService)
             }
@@ -92,6 +94,10 @@ struct LoginView: View {
                 .clipShape(RoundedRectangle(cornerRadius: 14))
             }
             .disabled(authService.isLoading || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
+
+            Button("Forgot password?") { showPasswordRecovery = true }
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .disabled(authService.isLoading)
 
             Button("Create a parent account") { signupAccountType = .parent }
                 .font(.subheadline.weight(.semibold))

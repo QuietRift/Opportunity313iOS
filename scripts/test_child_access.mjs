@@ -7,9 +7,9 @@ async function run(options={}) {
   const calls=[]; let handler;
   const profile={id:'child',age_band:'9-12',account_type:options.type??'youth_account',user_id:options.user===undefined?'child-user':options.user};
   if(options.age)profile.age_band=options.age;
-  const admin={auth:{admin:{async updateUserById(id,value){calls.push(['ban',id,value]);return {error:options.fail==='ban'?new Error('ban failed'):null};},async deleteUser(id){calls.push(['deleteUser',id]);return {error:null};}}},from(table){
+  const admin={auth:{admin:{async updateUserById(id,value){calls.push(['ban',id,value]);return {error:options.fail==='ban'?new Error('ban failed'):null};},async createUser(value){calls.push(['createUser',value]);return {data:{user:{id:'new-child-user'}},error:null};},async deleteUser(id){calls.push(['deleteUser',id]);return {error:null};}}},from(table){
     let op='select', value;
-    const query={select(){return query},eq(){return query},update(v){op='update';value=v;return query},delete(){op='delete';return query},single(){return query},maybeSingle(){return query},throwOnError(){return query},then(resolve,reject){
+    const query={select(){return query},eq(){return query},update(v){op='update';value=v;return query},upsert(v){op='upsert';value=v;return query},delete(){op='delete';return query},single(){return query},maybeSingle(){return query},throwOnError(){return query},then(resolve,reject){
       if(op!=='select')calls.push([op,table,value]);
       if(options.fail===table && op!=='select')return Promise.reject(new Error('write failed')).then(resolve,reject);
       const data=table==='guardian_relationships'?(options.unrelated?null:{id:'relationship'}):table==='youth_profiles'?profile:null;
@@ -36,4 +36,14 @@ for(const fail of ['ban','credential-read','child_access_credentials','user_role
  const r=await run({fail});assert.equal(r.status,500);assert.notEqual(r.body.revoked,true);
 }
 const repeat=await run({type:'parent_managed',user:null});assert.equal(repeat.status,200);assert(!repeat.calls.some(c=>c[0]==='ban'));
-console.log('16 child-access regression cases passed.');
+for (const user of [null,'child-user']) {
+ const r=await run({type:'parent_managed',user,action:'generate'});
+ assert.equal(r.status,200);assert.match(r.body.code,/^O313-[A-Z2-9]{4}-[A-Z2-9]{4}-[A-Z2-9]{4}$/);
+ const saved=r.calls.find(c=>c[0]==='upsert'&&c[1]==='child_access_credentials')[2];
+ assert.equal(saved.code_hash.length,64);assert(!JSON.stringify(saved).includes(r.body.code));assert.equal(saved.expires_at,r.body.expiresAt);
+}
+for (const fail of ['youth_profiles','user_roles','child_access_credentials']) {
+ const r=await run({type:'parent_managed',user:null,action:'generate',fail});assert.equal(r.status,500);assert.equal(r.body.code,undefined);
+ assert.equal(r.calls.some(c=>c[0]==='deleteUser'),fail==='youth_profiles');
+}
+console.log('21 child-access regression cases passed, including generation, hashed storage, and failed-write handling.');

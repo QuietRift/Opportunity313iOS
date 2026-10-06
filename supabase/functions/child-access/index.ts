@@ -35,6 +35,8 @@ Deno.serve(async (request) => {
 
   const admin = createClient(url, serviceKey, { auth: { persistSession: false, autoRefreshToken: false } });
 
+  let createdAuthUserID: string | null = null;
+  let profileLinked = false;
   try {
     const body = await request.json();
     const action = body.action;
@@ -136,6 +138,7 @@ Deno.serve(async (request) => {
     if (action !== "generate") return json({ error: "Unknown action." }, 400);
 
     const accessCode = randomCode();
+    const expiresAt = new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString();
     const email = `child-${profileID}@access.opportunity313.invalid`;
     let authUserID = existing?.auth_user_id ?? profile.user_id;
 
@@ -152,24 +155,29 @@ Deno.serve(async (request) => {
       });
       if (error) throw error;
       authUserID = data.user.id;
+      createdAuthUserID = authUserID;
     }
 
-    await admin.from("youth_profiles").update({ user_id: authUserID }).eq("id", profileID);
-    await admin.from("user_roles").upsert({ user_id: authUserID, role: "youth", assigned_by: parentID });
+    await admin.from("youth_profiles").update({ user_id: authUserID }).eq("id", profileID).select("id").single().throwOnError();
+    profileLinked = true;
+    await admin.from("user_roles").upsert({ user_id: authUserID, role: "youth", assigned_by: parentID }).throwOnError();
     await admin.from("child_access_credentials").upsert({
       youth_profile_id: profileID,
       auth_user_id: authUserID,
       code_hash: await digest(accessCode),
       code_hint: accessCode.slice(-4),
-      expires_at: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString(),
+      expires_at: expiresAt,
       revoked_at: null,
       created_by: parentID,
       updated_at: new Date().toISOString(),
-    });
+    }).throwOnError();
 
-    return json({ code: accessCode, expiresAt: new Date(Date.now() + 180 * 24 * 60 * 60 * 1000).toISOString() });
+    return json({ code: accessCode, expiresAt });
   } catch (error) {
-    console.error(error);
+    if (createdAuthUserID && !profileLinked) {
+      await admin.auth.admin.deleteUser(createdAuthUserID);
+    }
+    console.error("Child access operation failed.");
     return json({ error: "Unable to manage child access right now." }, 500);
   }
 });
