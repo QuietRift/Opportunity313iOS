@@ -1,6 +1,3 @@
-const SUPABASE_URL = "https://pinpurdjfbvxrwexzlre.supabase.co";
-// The same publishable client key as the iOS app. Authorization is enforced by the backend.
-const PUBLISHABLE_KEY = "sb_publishable_SE20ynXjKObWJ7AeOwfw8A_8lSAJ83q";
 const SESSION_KEY = "opportunity313-provider-session";
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
@@ -13,7 +10,7 @@ const sample = [
   { id: "sample-3", title: "Saturday Skills Clinic", category: "Sports", status: "closed", verification_status: "rejected", created_at: "2026-09-24T12:00:00Z", summary: "Sample: a sports clinic submission that was not approved.", is_free: true }
 ];
 const sampleOrganization = { name: "Detroit Community Partners", organization_type: "community_provider", description: "Sample organization connecting Detroit youth with local programs.", website: "https://example.org", contact_name: "Sample contact", contact_email: "hello@example.org", contact_phone: "", service_area: "Detroit", address: "", city: "Detroit", verification_status: "pending" };
-const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", authMode: "signin", busy: 0, loading: false, epoch: 0, profileDirty: false, confirmationEmail: null };
+const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", busy: 0, loading: false, epoch: 0, profileDirty: false, confirmationEmail: null };
 let refreshPromise;
 let loadPromise;
 
@@ -57,16 +54,7 @@ function saveSession(session) {
 }
 async function request(path, { method = "GET", body, auth = true, refresh = true } = {}) {
   if (auth && refresh) await ensureFreshSession();
-  const headers = { apikey: PUBLISHABLE_KEY, "Content-Type": "application/json" };
-  if (auth && state.session?.access_token) headers.Authorization = `Bearer ${state.session.access_token}`;
-  const response = await fetch(`${SUPABASE_URL}${path}`, { method, headers, signal: AbortSignal.timeout(20000), body: body === undefined ? undefined : JSON.stringify(body) });
-  if (!response.ok) {
-    let message = "Unable to complete the request. Please try again.";
-    try { const data = await response.json(); message = data.msg || data.message || data.error_description || data.error || message; } catch { /* use fallback */ }
-    throw new Error(typeof message === "string" ? message : "Please try again.");
-  }
-  if (response.status === 204) return null;
-  const text = await response.text(); return text ? JSON.parse(text) : null;
+  return Opportunity313Auth.request(path, {method, body, session:auth ? state.session : null});
 }
 async function ensureFreshSession() {
   if (!state.session) throw new Error("Please sign in to continue.");
@@ -202,7 +190,7 @@ async function signOut() {
   saveSession(null); state.user = null; state.org = null; state.preview = true; state.opportunities = sample; state.profileDirty = false;
   $("#workspace-error").hidden = true; $("#opportunity-form").reset(); closeDialog("auth-dialog"); closeDialog("opportunity-dialog"); closeDialog("detail-dialog");
   render(); showNotice("You’ve signed out.");
-  if (session) { try { await fetch(`${SUPABASE_URL}/auth/v1/logout?scope=local`, { method:"POST", headers:{apikey:PUBLISHABLE_KEY,Authorization:`Bearer ${session.access_token}`},signal:AbortSignal.timeout(10000) }); } catch { /* Local session is cleared regardless. */ } }
+  if (session) { try { await Opportunity313Auth.request("/auth/v1/logout?scope=local",{method:"POST",session}); } catch { /* Local session is cleared regardless. */ } }
 }
 function openEditor() {
   if (state.preview) { $("#auth-dialog").showModal(); return; }
@@ -237,31 +225,19 @@ $$("dialog").forEach((dialog) => dialog.addEventListener("cancel", (event) => { 
 $("#profile-form").addEventListener("input", () => { state.profileDirty = true; });
 $("#profile-reset").addEventListener("click", () => { state.profileDirty = false; showFormError("#profile-error", ""); renderProfile(); });
 
-function setAuthMode(mode) {
-  state.authMode = mode;
-  ["signin","signup"].forEach((tab) => { const active=mode===tab; $(`#tab-${tab}`).classList.toggle("active",active); $(`#tab-${tab}`).setAttribute("aria-pressed",String(active)); });
-  $("#auth-title").textContent = mode === "signin" ? "Sign in to your workspace" : "Create an Organization account";
-  $("#auth-subtitle").textContent = mode === "signin" ? "Use the same Organization login as the iOS app." : "Start with your email, then add your organization’s information.";
-  $("#auth-submit").textContent = mode === "signin" ? "Sign in" : "Create account"; $("#auth-submit").dataset.label = $("#auth-submit").textContent;
-  const password=$("#auth-form").elements.password; password.autocomplete=mode==="signin"?"current-password":"new-password"; password.minLength=mode==="signin"?1:8;
-  showFormError("#auth-error", "");
-}
-$("#tab-signin").addEventListener("click",()=>setAuthMode("signin")); $("#tab-signup").addEventListener("click",()=>setAuthMode("signup"));
 $("#auth-form").addEventListener("submit", async (event) => {
   event.preventDefault(); const form=event.currentTarget; if (state.busy) return;
   const fields=new FormData(form); const email=String(fields.get("email")).trim(); const password=String(fields.get("password"));
   showFormError("#auth-error",""); setBusy(form,true);
   try {
-    const result=await request(state.authMode==="signin"?"/auth/v1/token?grant_type=password":"/auth/v1/signup",{method:"POST",body:{email,password},auth:false});
-    if (!result.access_token) {
-      state.confirmationEmail=email; $("#confirmation-message").hidden=false; $("#confirmation-message").textContent="Check your email for the confirmation link. After confirming, return here to sign in."; $("#resend-confirmation").hidden=false; form.elements.password.value=""; setAuthMode("signin"); return;
-    }
+    const result=await request("/auth/v1/token?grant_type=password",{method:"POST",body:{email,password},auth:false});
+    if (!result.access_token) throw new Error("Sign-in could not be completed. Please try again.");
     state.epoch++; state.profileDirty=false; saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in});
     state.preview=false; state.opportunities=[];
     try { await loadProvider(); }
     catch (error) { await signOut(); $("#auth-dialog").showModal(); throw error; }
     closeDialog("auth-dialog"); form.reset(); $("#notice").hidden=!!state.org; $("#confirmation-message").hidden=true; $("#resend-confirmation").hidden=true;
-  } catch(error) { showFormError("#auth-error",error.message); }
+  } catch(error) { showFormError("#auth-error",error.message); if(error.code==="email_not_confirmed"){state.confirmationEmail=email;$("#resend-confirmation").hidden=false;$("#confirmation-message").hidden=false;$("#confirmation-message").textContent="Confirm your email, then return here to sign in.";} }
   finally { setBusy(form,false); }
 });
 $("#resend-confirmation").addEventListener("click",async (event)=>{
@@ -301,7 +277,7 @@ $("#opportunity-form").addEventListener("submit",async(event)=>{
   }catch(error){showFormError("#opportunity-error",error.message);}finally{setBusy(form,false);}
 });
 
-setView(location.hash.slice(1));render();setAuthMode("signin");
+setView(location.hash.slice(1));render();
 try {
   const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
   if(saved?.refresh_token){saveSession(saved);state.preview=false;state.opportunities=[];render();loadProvider().catch((error)=>{ $("#workspace-error-message").textContent=`Unable to restore the workspace: ${error.message} You can retry or sign out.`;$("#workspace-error").hidden=false; });}

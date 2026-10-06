@@ -14,9 +14,30 @@
     X-Robots-Tag = "noindex, nofollow, noarchive"
     Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pinpurdjfbvxrwexzlre.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
 
+[[headers]]
+  for = "/signup/*"
+  [headers.values]
+    X-Robots-Tag = "noindex, nofollow, noarchive"
+    Content-Security-Policy = "default-src 'self'; script-src 'self'; style-src 'self' https://fonts.googleapis.com; font-src 'self' https://fonts.gstatic.com; connect-src 'self' https://pinpurdjfbvxrwexzlre.supabase.co; img-src 'self' data:; object-src 'none'; base-uri 'self'; frame-ancestors 'none'; form-action 'self'"
+
 [[redirects]]
   from = "/provider"
   to = "/provider/"
+  status = 301
+
+[[redirects]]
+  from = "/signup"
+  to = "/signup/"
+  status = 301
+
+[[redirects]]
+  from = "/signup/parent"
+  to = "/signup/parent/"
+  status = 301
+
+[[redirects]]
+  from = "/signup/provider"
+  to = "/signup/provider/"
   status = 301
 
 [[redirects]]

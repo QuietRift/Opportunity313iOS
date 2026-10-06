@@ -31,7 +31,7 @@ const server=http.createServer((req,res)=>{
  const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'America/Los_Angeles'});
  const page=await context.newPage();
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
- let org={...organization},rows=items.map(item=>({...item})),profilePayload,opportunityPayload,failProfile=false,failList=false,role='provider',hasMembership=true,refreshes=0,signupConfirmation=false;
+ let org={...organization},rows=items.map(item=>({...item})),profilePayload,opportunityPayload,failProfile=false,failList=false,role='provider',hasMembership=true,refreshes=0,signupConfirmation=false,logouts=0;
  const fulfill=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
  await page.route('https://pinpurdjfbvxrwexzlre.supabase.co/**',async(route)=>{
   const request=route.request(),url=new URL(request.url()),body=request.postDataJSON();
@@ -39,7 +39,7 @@ const server=http.createServer((req,res)=>{
   if(url.pathname==='/auth/v1/signup')return fulfill(route,signupConfirmation?{user:{id:userID}}:{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_in:3600});
   if(url.pathname==='/auth/v1/resend')return fulfill(route,{});
   if(url.pathname==='/auth/v1/user')return fulfill(route,{id:userID,email:'fixture@example.org'});
-  if(url.pathname==='/auth/v1/logout')return fulfill(route,{});
+  if(url.pathname==='/auth/v1/logout'){assert.equal(url.searchParams.get('scope'),'local');logouts++;return fulfill(route,{});}
   if(url.pathname==='/rest/v1/user_roles')return fulfill(route,role?[{role}]:[]);
   if(url.pathname==='/rest/v1/rpc/claim_onboarding_role'){assert.equal(body.requested_role,'provider');role='provider';return fulfill(route,'provider');}
   if(url.pathname==='/rest/v1/org_members')return fulfill(route,hasMembership?[{organization_id:orgID}]:[]);
@@ -92,10 +92,10 @@ const server=http.createServer((req,res)=>{
  await page.locator('#account-action').click();await page.getByText('You’ve signed out.',{exact:true}).waitFor();role='parent';await page.locator('#account-action').click();await page.locator('#auth-form [name=email]').fill('fixture@example.org');await page.locator('#auth-form [name=password]').fill('fixture-only-password');await page.locator('#auth-submit').click();await page.getByText('Use an Organization account for this workspace.',{exact:false}).waitFor();assert(await page.locator('#auth-dialog').evaluate(dialog=>dialog.open));await page.keyboard.press('Escape');
  // New accounts without roles complete onboarding with the same atomic profile RPC as iOS.
  role=null;hasMembership=false;await signIn();await page.getByRole('heading',{name:'Organization profile',exact:true}).waitFor();await page.locator('#profile-form [name=name]').fill('New Fixture Organization');await page.locator('#profile-form [name=city]').fill('Detroit');await page.locator('#profile-save').click();await page.getByText('Organization profile saved.',{exact:true}).waitFor();assert.equal(profilePayload.target_organization_id,null);
- // Confirmation-required signup remains honest about pending email verification.
- await page.locator('#account-action').click();await page.locator('#account-action').click();signupConfirmation=true;await page.locator('#tab-signup').click();await page.locator('#auth-form [name=email]').fill('newfixture@example.org');await page.locator('#auth-form [name=password]').fill('fixture-only-password');await page.locator('#auth-submit').click();await page.locator('#confirmation-message').waitFor();assert(await page.locator('#resend-confirmation').isVisible());assert.equal(await page.locator('#account-action').textContent(),'Sign in');await page.keyboard.press('Escape');
+ // The workspace now links to the dedicated provider signup screen.
+ await page.locator('#account-action').click();await page.locator('#account-action').click();assert.equal(await page.locator('#tab-signup').getAttribute('href'),'/signup/provider/');await page.keyboard.press('Escape');
  await page.setViewportSize({width:390,height:900});await clickView('Organization profile');await noOverflow();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(artifacts,'mobile-profile.png'),fullPage:true});
- assert.deepEqual(errors,[]);
- console.log('PASS: responsive preview, login, account isolation, editable profile/clear/error retention, approval filters/details, submission review status and Detroit timezone, recoverable refresh, session renewal, pagination, atomic onboarding, confirmation-required signup. Fixtures only; no live writes.');
+ assert.deepEqual(errors,[]);assert(logouts>=2,'Provider signout must revoke the local session');
+ console.log('PASS: responsive preview, login, account isolation, editable profile/clear/error retention, approval filters/details, submission review status and Detroit timezone, recoverable refresh, session renewal, pagination, atomic onboarding, dedicated signup entry link. Fixtures only; no live writes.');
  await browser.close();await new Promise(resolve=>server.close(resolve));
 })().catch(error=>{console.error(error);server.close();process.exit(1);});
