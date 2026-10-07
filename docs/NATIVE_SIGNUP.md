@@ -1,6 +1,6 @@
 # Native account signup
 
-The iOS login screen opens Parent signup through **Create a parent account**. The Other account types menu opens Provider / Organization or Young adult (18–24) signup. The shared form retains Opportunity313's navy/orange branding and uses the existing Supabase authentication and account routing.
+The iOS login screen opens Parent signup through **Create a parent account**. The Other account types menu opens Provider / Organization or Young adult (18–24) signup. The shared form retains Opportunity313's navy/orange branding and uses the existing Supabase authentication and account routing. Apple and Google options are implemented in the native sign-in and signup screens; see [provider setup and activation status](SOCIAL_SIGNIN.md).
 
 ## Behavior
 
@@ -18,11 +18,9 @@ The form keeps the existing navy/orange identity, system fonts, left-aligned lab
 
 ## Verification
 
-- Xcode's complete unit target: 32 tests in 6 suites passed, including 7 intercepted-HTTP auth tests and 4 signup model tests.
-- Auth fixtures cover confirmation-required and immediate-session responses, confirmed sign-in role claim, provider routing, existing-role precedence, denied privileged preference, unconfirmed preference, and failed role claim/retry. They use an isolated mock HTTP transport and no live signup requests.
-- Final unsigned Release build for generic iPhone passed. Simulator Debug build passed.
-- Four relevant UI checks passed across the final targeted runs: Parent validation/password visibility, Provider menu routing, signup opening, and startup reaching sign-in. They use an isolated iPhone simulator and fixture text; they never submit an actual signup. Earlier fixture gestures were corrected after exposing a stale Provider sheet selection, which was fixed with item-based presentation.
+- Final unsigned generic-iPhone Release build passed. The generated Info.plist retains the opt-in Firebase settings and includes the Google OAuth callback scheme.
+- All 45 unit tests in 6 suites passed with normal simulator signing, including 20 intercepted-HTTP authentication tests and 4 signup model tests. No real signup, email or OAuth login occurs in those fixtures.
+- Auth fixtures cover email confirmation, immediate session, role preservation/claim/retry, public-role restrictions, child-code retry, password recovery, Google PKCE and onboarding, Apple nonce/name exchange, cancellations, failed responses, age gating and provider availability.
+- Both final native signup UI checks passed: full Parent form validation/password visibility and Provider menu routing. Both social options are present. Screenshots were inspected; no account was submitted. An initial UI gesture targeted a partly visible confirmation field and was corrected to require the entire field to be visible before typing. An earlier separate UI result bundle completed normally; the final combined and separate UI runs reported all cases passing, then stalled collecting results and were stopped.
 
-The final Parent UI test and all its selected suites reported passing in the test log. Xcode then stalled collecting the result bundle; that process was stopped after completion. The final Parent screenshot attachment could not be exported from that bundle. Other native screenshots were exported from earlier runs of the same app source.
-
-Real email delivery, a real-account confirmation/sign-in round trip, signed archive, physical-device behavior, and TestFlight upload remain unverified. This change does not upload a build to App Store Connect.
+Real email delivery, real Apple/Google sign-in, physical-device behavior, signed archive, and TestFlight upload remain unverified. The Apple/Google providers are currently disabled pending the owner's account setup. This change does not upload a build to App Store Connect.

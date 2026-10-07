@@ -66,18 +66,21 @@ struct LoginView: View {
     private var signInCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome back").font(.title2.bold())
+            SocialSignInButtons()
+            if let error = authService.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+
             TextField("Email", text: $email)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.emailAddress)
                 .textContentType(.emailAddress)
                 .brandField()
+                .disabled(authService.isLoading)
             SecureField("Password", text: $password)
                 .textContentType(.password)
                 .brandField()
-
-            if let error = authService.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.red)
-            }
+                .disabled(authService.isLoading)
 
             Button {
                 Task { await authService.signIn(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password) }
@@ -130,6 +133,7 @@ struct LoginView: View {
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.30)))
         }
+        .disabled(authService.isLoading)
     }
 }
 

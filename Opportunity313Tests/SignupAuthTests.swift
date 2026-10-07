@@ -1,4 +1,5 @@
 import Foundation
+import AuthenticationServices
 import Supabase
 import Testing
 @testable import Opportunity313
@@ -125,6 +126,127 @@ struct SignupAuthTests {
         #expect(!service.needsOnboarding)
     }
 
+    @Test @MainActor func googleSignupPreservesChosenParentOrProviderUsingPKCE() async throws {
+        for type in [SignupAccountType.parent, .provider] {
+            let (service, fixture) = await makeSocialService("socialNew")
+            let success = await service.signInWithGoogle(accountType: type) { url in
+                let items = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+                #expect(items.first { $0.name == "provider" }?.value == "google")
+                #expect(items.first { $0.name == "redirect_to" }?.value == SocialSignIn.callbackURL.absoluteString)
+                #expect(items.first { $0.name == "code_challenge_method" }?.value == "s256")
+                #expect(items.first { $0.name == "code_challenge" }?.value?.isEmpty == false)
+                return URL(string: "com.kevin.opportunity313://auth/callback?code=fixture-code")!
+            }
+            #expect(success && service.isAuthenticated)
+            #expect(service.role == type.rawValue)
+            #expect(!service.isLoading)
+            let calls = SignupFixtureProtocol.recorder.requests(fixture)
+            let claim = try #require(calls.first { $0.url?.path.contains("claim_onboarding_role") == true })
+            #expect((SignupFixtureProtocol.body(claim) as? [String: String])?["requested_role"] == type.rawValue)
+            let token = try #require(calls.first { $0.url?.path == "/auth/v1/token" })
+            #expect(token.url?.query == "grant_type=pkce")
+            #expect((SignupFixtureProtocol.body(token) as? [String: String])?["code_verifier"]?.isEmpty == false)
+        }
+    }
+
+    @Test @MainActor func socialSignupCannotChangeExistingParentRole() async {
+        let (service, fixture) = await makeSocialService("existingParent")
+        #expect(await service.signInWithGoogle(accountType: .provider) { _ in
+            URL(string: "com.kevin.opportunity313://auth/callback?code=fixture-code")!
+        })
+        #expect(service.role == "parent")
+        #expect(!SignupFixtureProtocol.recorder.requests(fixture).contains { $0.url?.path.contains("claim_onboarding_role") == true })
+    }
+
+    @Test @MainActor func socialLoginWithoutSignupChoiceKeepsManualOnboarding() async {
+        let (service, _) = await makeSocialService("socialNew")
+        #expect(await service.signInWithGoogle { _ in URL(string: "com.kevin.opportunity313://auth/callback?code=fixture-code")! })
+        #expect(service.role == nil && service.needsOnboarding)
+    }
+
+    @Test @MainActor func cancelledGoogleOrAppleSignInDoesNotShowAnErrorOrCreateAccount() async throws {
+        let (service, fixture) = await makeSocialService("socialNew")
+        #expect(await service.signInWithGoogle(accountType: .parent) { _ in
+            throw ASWebAuthenticationSessionError(.canceledLogin)
+        } == false)
+        #expect(!service.isAuthenticated && !service.isLoading && service.errorMessage == nil)
+        let nonce = try #require(service.prepareAppleSignIn(accountType: .provider, confirmsAdultAge: false))
+        await service.completeAppleSignIn(.failure(ASAuthorizationError(.canceled)), nonce: nonce)
+        #expect(!service.isAuthenticated && !service.isLoading && service.errorMessage == nil)
+        #expect(SignupFixtureProtocol.recorder.requests(fixture).isEmpty)
+    }
+
+    @Test @MainActor func socialSignupRequiresYouthAgeConfirmation() async {
+        let (service, fixture) = await makeSocialService("socialNew")
+        #expect(await service.signInWithGoogle(accountType: .youth) { _ in
+            Issue.record("Must not launch before age confirmation")
+            return SocialSignIn.callbackURL
+        } == false)
+        #expect(service.prepareAppleSignIn(accountType: .youth, confirmsAdultAge: false) == nil)
+        #expect(service.errorMessage != nil && !service.isLoading)
+        #expect(SignupFixtureProtocol.recorder.requests(fixture).isEmpty)
+    }
+
+    @Test @MainActor func failedOrUnexpectedGoogleResponseDoesNotAuthenticate() async {
+        for scenario in ["socialTokenFailure", "socialBadCallback"] {
+            let (service, _) = await makeSocialService(scenario)
+            let success = await service.signInWithGoogle(accountType: .parent) { _ in
+                URL(string: scenario == "socialBadCallback" ? "com.kevin.opportunity313://other/callback?code=fixture-code" : "com.kevin.opportunity313://auth/callback?code=fixture-code")!
+            }
+            #expect(!success && !service.isAuthenticated && !service.isLoading)
+            #expect(service.errorMessage != nil)
+        }
+    }
+
+    @Test @MainActor func appleExchangesRawNonceAndSavesFirstAuthorizationName() async throws {
+        let (service, fixture) = await makeSocialService("socialApple")
+        let nonce = try #require(service.prepareAppleSignIn(accountType: .parent, confirmsAdultAge: false))
+        try await service.exchangeAppleToken("fixture-apple-identity", nonce: nonce, fullName: "First Apple Name")
+        #expect(service.role == "parent" && service.displayName == "First Apple Name")
+        let calls = SignupFixtureProtocol.recorder.requests(fixture)
+        let token = try #require(calls.first { $0.url?.path == "/auth/v1/token" })
+        let body = try #require(SignupFixtureProtocol.body(token) as? [String: Any])
+        #expect(body["provider"] as? String == "apple")
+        #expect(body["nonce"] as? String == nonce)
+        #expect(body["id_token"] as? String == "fixture-apple-identity")
+        #expect(calls.contains { $0.url?.path == "/auth/v1/user" && $0.httpMethod == "PUT" })
+    }
+
+    @Test @MainActor func unavailableProvidersDoNotLaunchSignIn() async {
+        let (client, fixture) = makeClient("socialNew")
+        let service = AuthService(client: client, socialProviderLoader: { .init(external: [:]) })
+        await service.refreshSocialProviders()
+        #expect(service.socialProviders?.google == false && service.socialProviders?.apple == false)
+        #expect(service.socialProviderMessage != nil)
+        #expect(await service.signInWithGoogle { _ in Issue.record("Disabled provider launched"); return SocialSignIn.callbackURL } == false)
+        #expect(SignupFixtureProtocol.recorder.requests(fixture).isEmpty)
+    }
+
+    @Test func providerSettingsRequestUsesTheProjectKeyAndParsesAvailability() async throws {
+        let fixture = UUID().uuidString
+        let config = URLSessionConfiguration.ephemeral
+        config.protocolClasses = [SignupFixtureProtocol.self]
+        config.httpAdditionalHeaders = ["X-Signup-Fixture": fixture, "X-Signup-Scenario": "settings"]
+        let providers = try await SupabaseManager.shared.loadSocialProviders(session: URLSession(configuration: config))
+        #expect(providers.apple && !providers.google)
+        let request = try #require(SignupFixtureProtocol.recorder.requests(fixture).first)
+        #expect(request.value(forHTTPHeaderField: "apikey") == SupabaseManager.publishableKey)
+        #expect(request.url?.path == "/auth/v1/settings")
+    }
+
+    @Test func appleNonceIsRandomAndHashIsDeterministic() throws {
+        let first = try SocialSignIn.nonce(), second = try SocialSignIn.nonce()
+        #expect(first.count == 64 && first != second)
+        #expect(SocialSignIn.hash("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
+    }
+
+    @MainActor private func makeSocialService(_ scenario: String) async -> (AuthService, String) {
+        let (client, fixture) = makeClient(scenario)
+        let service = AuthService(client: client, socialProviderLoader: { .init(external: ["apple": true, "google": true]) })
+        await service.refreshSocialProviders()
+        return (service, fixture)
+    }
+
     private var validDraft: SignupDraft {
         SignupDraft(name: " Fixture Parent ", email: "fixture@example.org", password: "fixture-only-password", confirmPassword: "fixture-only-password")
     }
@@ -172,12 +294,19 @@ private final class SignupFixtureProtocol: URLProtocol, @unchecked Sendable {
         Self.recorder.append(request, fixture: fixture)
         let preference = scenario == "existingParent" || scenario == "newProvider" ? "provider" : scenario == "unsupported" ? "admin" : "parent"
         var user: [String: Any] = ["id": "00000000-0000-0000-0000-000000000031", "aud": "authenticated", "role": "authenticated", "email": "fixture@example.org", "user_metadata": ["full_name": "Fixture Parent", "signup_account_type": preference], "app_metadata": [:], "created_at": "2026-10-01T12:00:00Z", "updated_at": "2026-10-01T12:00:00Z", "identities": []]
+        if scenario.hasPrefix("social") { user["user_metadata"] = [:] }
+        if request.httpMethod == "PUT", let body = Self.body(request) as? [String: Any], let data = body["data"] {
+            user["user_metadata"] = data
+        }
         if scenario != "unconfirmed" { user["email_confirmed_at"] = "2026-10-01T12:00:00Z" }
         let session: [String: Any] = ["access_token": "fixture-token", "refresh_token": "fixture-refresh", "token_type": "bearer", "expires_in": 3600, "expires_at": Int(Date().timeIntervalSince1970) + 3600, "user": user]
         var status = 200; let payload: Any
         switch request.url?.path {
         case "/auth/v1/signup": payload = scenario == "confirmation" ? user : session
-        case "/auth/v1/token", "/auth/v1/verify": payload = session
+        case "/auth/v1/token", "/auth/v1/verify":
+            if scenario == "socialTokenFailure" { status = 400; payload = ["error": "invalid_grant", "error_description": "Fixture exchange failed"] }
+            else { payload = session }
+        case "/auth/v1/settings": payload = ["external": ["apple": true, "google": false]]
         case "/auth/v1/recover": payload = [:]
         case "/auth/v1/user": payload = user
         case "/rest/v1/rpc/create_parent_managed_youth": payload = "00000000-0000-0000-0000-000000000041"

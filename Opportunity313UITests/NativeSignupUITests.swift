@@ -8,10 +8,14 @@ final class NativeSignupUITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         XCTAssertTrue(app.buttons["createParentAccount"].waitForExistence(timeout: 30))
+        XCTAssertTrue(app.buttons["continueWithApple"].exists)
+        XCTAssertTrue(app.buttons["continueWithGoogle"].exists)
         app.buttons["createParentAccount"].tap()
         XCTAssertTrue(app.staticTexts["signupHeading"].waitForExistence(timeout: 5))
         XCTAssertEqual(app.staticTexts["signupHeading"].label, "Create your parent account")
         XCTAssertFalse(app.buttons["submitSignup"].isEnabled)
+        XCTAssertTrue(app.buttons["continueWithApple"].exists)
+        XCTAssertTrue(app.buttons["continueWithGoogle"].exists)
         attach(app, "Parent signup")
         app.buttons["signupShowPassword"].tap()
 
@@ -56,7 +60,9 @@ final class NativeSignupUITests: XCTestCase {
     }
     @MainActor private func reveal(_ element: XCUIElement, in app: XCUIApplication) {
         for _ in 0..<5 {
-            if element.isHittable { return }
+            let keyboardTop = app.keyboards.firstMatch.exists ? app.keyboards.firstMatch.frame.minY : app.frame.maxY
+            let visibleBottom = min(app.frame.maxY - 40, keyboardTop - 16)
+            if element.isHittable && element.frame.minY >= 130 && element.frame.maxY <= visibleBottom { return }
             let scroll = app.scrollViews["nativeSignupScroll"]
             // Start above the keyboard; a full-view swipe can hit the keyboard instead.
             scroll.coordinate(withNormalizedOffset: CGVector(dx: 0.5, dy: 0.4))

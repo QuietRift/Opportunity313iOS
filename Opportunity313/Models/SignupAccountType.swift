@@ -36,9 +36,9 @@ enum SignupAccountType: String, CaseIterable, Identifiable {
     }
     var nextStep: String {
         switch self {
-        case .parent: "After you confirm your email and sign in, you can add your children from the Children tab."
-        case .provider: "After you confirm your email and sign in, you’ll finish your organization profile. Every opportunity requires admin approval."
-        case .youth: "After you confirm your email and sign in, you’ll set up your profile and interests."
+        case .parent: "Once your account is ready, you can add your children from the Children tab."
+        case .provider: "Once your account is ready, you’ll finish your organization profile. Every opportunity requires admin approval."
+        case .youth: "Once your account is ready, you’ll set up your profile and interests."
         }
     }
 

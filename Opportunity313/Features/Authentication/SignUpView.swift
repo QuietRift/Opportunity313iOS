@@ -74,6 +74,16 @@ struct SignUpView: View {
             .accessibilityIdentifier("signupAccountType")
             .disabled(authService.isLoading)
 
+            if draft.accountType == .youth {
+                Toggle("I am 18–24 years old", isOn: $draft.confirmsAdultAge)
+                    .accessibilityIdentifier("signupAdultConfirmation")
+                    .disabled(authService.isLoading)
+            }
+            SocialSignInButtons(accountType: draft.accountType, confirmsAdultAge: draft.confirmsAdultAge)
+            errorContent
+            Text("Apple and Google verify your email for you. You won’t need to create a separate password.")
+                .font(.caption).foregroundStyle(.secondary)
+
             VStack(alignment: .leading, spacing: 20) {
                 fieldLabel("Your name") {
                     TextField("Your name", text: $draft.name)
@@ -125,14 +135,8 @@ struct SignUpView: View {
                         .font(.subheadline).foregroundStyle(.red)
                         .accessibilityIdentifier("signupPasswordMismatch")
                 }
-                if draft.accountType == .youth {
-                    Toggle("I am 18–24 years old", isOn: $draft.confirmsAdultAge)
-                        .accessibilityIdentifier("signupAdultConfirmation")
-                }
             }
             .disabled(authService.isLoading)
-
-            errorContent
 
             Button { Task { await createAccount() } } label: {
                 HStack {

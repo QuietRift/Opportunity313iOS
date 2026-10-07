@@ -8,6 +8,7 @@
 import Foundation
 import Combine
 import Supabase
+import AuthenticationServices
 
 @MainActor
 final class AuthService: ObservableObject {
@@ -26,10 +27,20 @@ final class AuthService: ObservableObject {
     @Published private(set) var isResolvingAccount = true
     @Published private(set) var accountError: String?
 
+    @Published private(set) var socialProviders: SocialProviderAvailability?
+    @Published private(set) var isCheckingSocialProviders = false
+    @Published private(set) var socialProviderMessage: String? = "Checking sign-in options…"
+    private var pendingSocialAccountType: SignupAccountType?
+    private var isCompletingSocialSignIn = false
+    private let socialProviderLoader: @Sendable () async throws -> SocialProviderAvailability
     private let supabase: SupabaseClient
 
-    init(client: SupabaseClient = SupabaseManager.shared.client) {
+    init(client: SupabaseClient = SupabaseManager.shared.client,
+         socialProviderLoader: @escaping @Sendable () async throws -> SocialProviderAvailability = {
+             try await SupabaseManager.shared.loadSocialProviders()
+         }) {
         supabase = client
+        self.socialProviderLoader = socialProviderLoader
     }
 
 
@@ -40,6 +51,8 @@ final class AuthService: ObservableObject {
         for await (event, session) in
             supabase.auth.authStateChanges {
 
+            // Finish social profile/role setup before navigating away from login.
+            if isCompletingSocialSignIn && session != nil { continue }
             if event == .passwordRecovery { isRecoveringPassword = true }
             if event == .signedOut { isRecoveringPassword = false }
             let shouldLoadAccount = userID != session?.user.id || role == nil
@@ -228,6 +241,7 @@ final class AuthService: ObservableObject {
             try await supabase.auth
                 .signOut()
 
+            pendingSocialAccountType = nil
             userID = nil
             isAuthenticated = false
             role = nil
@@ -247,6 +261,7 @@ final class AuthService: ObservableObject {
         // The Auth client removes its stored session before contacting the
         // server, so a deleted account can still be cleared on this device.
         try? await supabase.auth.signOut(scope: .local)
+        pendingSocialAccountType = nil
         userID = nil
         isAuthenticated = false
         role = nil
@@ -301,6 +316,7 @@ final class AuthService: ObservableObject {
             if let userRole =
                 roles.first {
 
+                pendingSocialAccountType = nil
                 role = userRole.role
                 needsOnboarding = false
 
@@ -329,11 +345,12 @@ final class AuthService: ObservableObject {
                     if account.emailConfirmedAt != nil,
                        let choice = SignupAccountType.onboardingChoice(
                            existingRoles: roles.map(\.role),
-                           preference: account.userMetadata["signup_account_type"]?.stringValue
+                           preference: pendingSocialAccountType?.rawValue ?? account.userMetadata["signup_account_type"]?.stringValue
                        ) {
                         let _: String = try await supabase
                             .rpc("claim_onboarding_role", params: ["requested_role": choice.rawValue])
                             .execute().value
+                        pendingSocialAccountType = nil
                         role = choice.rawValue
                         needsOnboarding = false
                         if choice == .youth { await loadYouthProfile() }
@@ -445,5 +462,123 @@ final class AuthService: ObservableObject {
     func clearError() {
 
         errorMessage = nil
+    }
+}
+
+extension AuthService {
+    func refreshSocialProviders() async {
+        guard !isCheckingSocialProviders, !isLoading else { return }
+        isCheckingSocialProviders = true
+        defer { isCheckingSocialProviders = false }
+        do {
+            let providers = try await socialProviderLoader()
+            socialProviders = providers
+            switch (providers.apple, providers.google) {
+            case (true, true): socialProviderMessage = nil
+            case (false, false): socialProviderMessage = "Apple and Google sign-in are being set up. You can use email now."
+            case (false, true): socialProviderMessage = "Apple sign-in is being set up."
+            case (true, false): socialProviderMessage = "Google sign-in is being set up."
+            }
+        } catch {
+            socialProviders = nil
+            socialProviderMessage = "Sign-in options couldn’t load. Try again, or use email."
+        }
+    }
+
+    private func beginSocialSignIn(accountType: SignupAccountType?, confirmsAdultAge: Bool) -> Bool {
+        guard !isLoading else { return false }
+        guard accountType != .youth || confirmsAdultAge else {
+            errorMessage = "Confirm that you are 18–24, or ask a parent to create your child profile."
+            return false
+        }
+        errorMessage = nil
+        pendingSocialAccountType = accountType
+        isCompletingSocialSignIn = true
+        isLoading = true
+        return true
+    }
+
+    func prepareAppleSignIn(accountType: SignupAccountType?, confirmsAdultAge: Bool) -> String? {
+        guard socialProviders?.apple == true,
+              beginSocialSignIn(accountType: accountType, confirmsAdultAge: confirmsAdultAge) else { return nil }
+        do { return try SocialSignIn.nonce() }
+        catch { endSocialSignIn(error: error); return nil }
+    }
+
+    func completeAppleSignIn(_ result: Result<ASAuthorization, Error>, nonce: String?) async {
+        guard isCompletingSocialSignIn, let nonce else { return }
+        do {
+            let authorization = try result.get()
+            guard let credential = authorization.credential as? ASAuthorizationAppleIDCredential,
+                  let data = credential.identityToken,
+                  let token = String(data: data, encoding: .utf8), !token.isEmpty else {
+                throw SocialSignIn.Failure(message: "Apple did not return a sign-in credential. Please try again.")
+            }
+            let fullName = credential.fullName.map { PersonNameComponentsFormatter().string(from: $0) }
+            try await exchangeAppleToken(token, nonce: nonce, fullName: fullName)
+            endSocialSignIn()
+        } catch { endSocialSignIn(error: error) }
+    }
+
+    // Used after Apple's system authorization. The raw nonce is sent only to
+    // Supabase; Apple receives its SHA-256 hash.
+    func exchangeAppleToken(_ token: String, nonce: String, fullName: String?) async throws {
+        let session = try await supabase.auth.signInWithIdToken(credentials: .init(provider: .apple, idToken: token, nonce: nonce))
+        let name = fullName?.trimmingCharacters(in: .whitespacesAndNewlines) ?? ""
+        if !name.isEmpty && (session.user.userMetadata["full_name"]?.stringValue ?? "").isEmpty {
+            // Apple provides the name only on the first authorization. Failure
+            // to save a display name must not discard an authenticated session.
+            _ = try? await supabase.auth.update(user: .init(data: ["full_name": .string(name), "display_name": .string(name)]))
+        }
+        await finishSocialAccount()
+        if displayName.isEmpty { displayName = name }
+    }
+
+    @discardableResult
+    func signInWithGoogle(
+        accountType: SignupAccountType? = nil,
+        confirmsAdultAge: Bool = false,
+        launchFlow: (@MainActor @Sendable (URL) async throws -> URL)? = nil
+    ) async -> Bool {
+        guard socialProviders?.google == true,
+              beginSocialSignIn(accountType: accountType, confirmsAdultAge: confirmsAdultAge) else { return false }
+        do {
+            if let launchFlow {
+                _ = try await supabase.auth.signInWithOAuth(provider: .google, redirectTo: SocialSignIn.callbackURL) { url in
+                    let callback = try await launchFlow(url)
+                    guard SocialSignIn.acceptsCallback(callback) else {
+                        throw SocialSignIn.Failure(message: "The sign-in response did not return to Opportunity313.")
+                    }
+                    return callback
+                }
+            } else {
+                _ = try await supabase.auth.signInWithOAuth(provider: .google, redirectTo: SocialSignIn.callbackURL)
+            }
+            await finishSocialAccount()
+            endSocialSignIn()
+            return true
+        } catch { endSocialSignIn(error: error); return false }
+    }
+
+    private func finishSocialAccount() async {
+        guard let user = supabase.auth.currentUser else { return }
+        userID = user.id
+        displayName = user.userMetadata["full_name"]?.stringValue ?? ""
+        email = user.email ?? ""
+        isAuthenticated = true
+        await loadUserRole()
+    }
+
+    private func endSocialSignIn(error: Error? = nil) {
+        isCompletingSocialSignIn = false
+        isLoading = false
+        if let error {
+            pendingSocialAccountType = nil
+            let nsError = error as NSError
+            let cancelled = error is CancellationError ||
+                (nsError.domain == ASAuthorizationError.errorDomain && nsError.code == ASAuthorizationError.canceled.rawValue) ||
+                (nsError.domain == ASWebAuthenticationSessionError.errorDomain && nsError.code == ASWebAuthenticationSessionError.canceledLogin.rawValue)
+            if !cancelled { errorMessage = error.localizedDescription }
+        }
     }
 }
