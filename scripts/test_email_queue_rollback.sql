@@ -24,7 +24,7 @@ end $$;
 select set_config('request.jwt.claims',jsonb_build_object('sub',(select id from email_qa where key='parent'),'role','authenticated')::text,true);
 insert into email_qa(key,id) values('child',public.create_parent_managed_youth('Rollback Child','9-12',4::smallint,'girl','{}','{}','parent'));
 insert into public.child_access_credentials(youth_profile_id,auth_user_id,code_hash,code_hint,created_by) values((select id from email_qa where key='child'),(select id from email_qa where key='parent'),repeat('a',64),'TEST',(select id from email_qa where key='parent'));
-delete from public.child_access_credentials where youth_profile_id=(select id from email_qa where key='child');
+update public.child_access_credentials set revoked_at=now(),updated_at=now() where youth_profile_id=(select id from email_qa where key='child');
 do $$ begin
  if (select count(*) from public.transactional_emails where recipient_user_id=(select id from email_qa where key='parent'))<>4 then raise exception 'Child event notifications missing'; end if;
  if exists(select 1 from public.transactional_emails where payload::text like '%rollback-hash%' or payload::text like '%TEST%') then raise exception 'Code leaked into notification'; end if;

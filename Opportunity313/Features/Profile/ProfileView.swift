@@ -301,7 +301,10 @@ struct ProfileView: View {
         VStack(spacing: 14) {
 
             Divider()
-
+            NavigationLink { ProfileSettingsView() } label: {
+                Label("Account Settings", systemImage: "gearshape")
+                    .frame(maxWidth: .infinity, alignment: .leading).padding()
+            }
             Button(role: .destructive) {
 
                 Task {

@@ -22,9 +22,15 @@ final class ChildAccessService: ObservableObject {
         await perform(action: "revoke", youthProfileID: youthProfileID)
     }
 
+    func deleteProfile(for youthProfileID: UUID) async -> Bool {
+        guard !isLoading else { return false }
+        await perform(action: "delete", youthProfileID: youthProfileID)
+        return errorMessage == nil && statusMessage != nil
+    }
+
     private func perform(action: String, youthProfileID: UUID) async {
         struct Request: Encodable { let action: String; let youthProfileId: UUID }
-        struct Response: Decodable { let code: String?; let expiresAt: String?; let revoked: Bool? }
+        struct Response: Decodable { let code: String?; let expiresAt: String?; let revoked: Bool?; let deleted: Bool? }
 
         guard !isLoading else { return }
         isLoading = true
@@ -55,6 +61,14 @@ final class ChildAccessService: ObservableObject {
             }
             generatedCode = response.code
             expiresAt = expiration
+            if action == "delete" {
+                guard response.deleted == true else {
+                    errorMessage = "The profile could not be deleted. Try again."
+                    return
+                }
+                statusMessage = "Child profile permanently deleted."
+                NotificationCenter.default.post(name: .managedYouthProfileDidChange, object: nil)
+            }
             if action == "revoke" {
                 guard response.revoked == true else {
                     errorMessage = "Access could not be revoked. Try again."
@@ -62,7 +76,7 @@ final class ChildAccessService: ObservableObject {
                 }
                 generatedCode = nil
                 expiresAt = nil
-                statusMessage = "Access revoked. The profile is still in your account."
+                statusMessage = "Child access is off. Their profile, changes, and saved opportunities are kept in your account."
             }
         } catch {
             errorMessage = error.localizedDescription

@@ -9,11 +9,13 @@ import SwiftUI
 
 struct ParentChildDetailView: View {
 
+    @Environment(\.dismiss) private var dismiss
     @Environment(\.colorScheme) private var colorScheme
 
     let initialChild: YouthProfile
     private var child: YouthProfile { childService.children.first { $0.id == initialChild.id } ?? initialChild }
     @State private var showEdit = false
+    @State private var showDelete = false
     @State private var showRevokeConfirmation = false
     @StateObject private var editService = YouthProfileService()
 
@@ -159,6 +161,10 @@ struct ParentChildDetailView: View {
 
                 VStack(alignment: .leading, spacing: 14) {
                     Text("Child Access").font(.title2.bold())
+                    Text(child.userId == nil ? "Child access is off" : "Child sign-in is linked")
+                        .font(.headline)
+                    Text("Revoking access stops child sign-in. Their profile, saved opportunities, interests, and changes stay here for you. Create a new code to restore access.")
+                        .font(.subheadline).foregroundStyle(.secondary)
                     if child.accountType == "parent_managed" {
                         Text("Create a private sign-in code so \(child.firstName) can use this profile without creating an independent account.")
                             .font(.subheadline).foregroundStyle(.secondary)
@@ -178,12 +184,15 @@ struct ParentChildDetailView: View {
                     HStack {
                         if child.accountType == "parent_managed" {
                             Button(childAccessService.generatedCode == nil ? "Create Access Code" : "Replace Code") {
-                                Task { await childAccessService.generate(for: child.id) }
+                                Task {
+                                    await childAccessService.generate(for: child.id)
+                                    if childAccessService.errorMessage == nil { await childService.fetchChildren() }
+                                }
                             }
                             .buttonStyle(.borderedProminent)
                         }
 
-                        Button("Revoke Access", role: .destructive) {
+                        Button("Revoke Child Access", role: .destructive) {
                             showRevokeConfirmation = true
                         }
                         .buttonStyle(.bordered)
@@ -413,6 +422,13 @@ struct ParentChildDetailView: View {
                 }
 
 
+                VStack(alignment: .leading, spacing: 12) {
+                    Text("Permanent Deletion").font(.headline)
+                    Text("Delete only when you want to permanently remove this child profile and its data. To keep their work and stop sign-in, use Revoke Child Access above.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                    Button("Delete Child Profile", role: .destructive) { showDelete = true }
+                        .buttonStyle(.bordered).accessibilityIdentifier("deleteChildProfile")
+                }
                 Spacer(minLength: 30)
             }
             .padding()
@@ -428,7 +444,7 @@ struct ParentChildDetailView: View {
         }
         .alert("Revoke \(child.firstName)'s access?", isPresented: $showRevokeConfirmation) {
             Button("Cancel", role: .cancel) { }
-            Button("Revoke Access", role: .destructive) {
+            Button("Revoke Child Access", role: .destructive) {
                 Task {
                     await childAccessService.revoke(for: child.id)
                     if childAccessService.errorMessage == nil {
@@ -438,6 +454,14 @@ struct ParentChildDetailView: View {
             }
         } message: {
             Text("Their current email login or access code will stop working. Their profile and saved opportunities stay in your account. You can create a new access code later.")
+        }
+        .sheet(isPresented: $showDelete) {
+            NavigationStack {
+                ChildProfileDeletionView(child: child) {
+                    showDelete = false
+                    Task { await childService.fetchChildren(); dismiss() }
+                }
+            }
         }
         .sheet(isPresented: $showEdit) {
             EditYouthProfileView(profile: child, profileService: editService) { name, age, grade, interests, accessibility in

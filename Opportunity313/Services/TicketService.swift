@@ -205,5 +205,25 @@ enum TicketTokenStore {
               let data = result as? Data else { return nil }
         return String(data: data, encoding: .utf8)
     }
+    static func removeAll(userID: UUID) {
+        let request: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "Opportunity313.EventTickets",
+            kSecReturnAttributes as String: true, kSecMatchLimit as String: kSecMatchLimitAll]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
+           let items = result as? [[String: Any]] {
+            for item in items {
+                guard let account = item[kSecAttrAccount as String] as? String,
+                      account.hasPrefix("\(userID).") else { continue }
+                let deletion: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "Opportunity313.EventTickets", kSecAttrAccount as String: account]
+                SecItemDelete(deletion as CFDictionary)
+            }
+        }
+        for key in UserDefaults.standard.dictionaryRepresentation().keys
+            where key.hasPrefix("opportunity313.ticketHold.\(userID).") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
+    }
     static func remove(userID: UUID, ticketID: UUID) { SecItemDelete(query(userID: userID, ticketID: ticketID) as CFDictionary) }
 }

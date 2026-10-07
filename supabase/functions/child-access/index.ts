@@ -40,7 +40,7 @@ Deno.serve(async (request) => {
   try {
     const body = await request.json();
     const action = body.action;
-    if (!["redeem", "generate", "revoke"].includes(action)) return json({ error: "Unknown action." }, 400);
+    if (!["redeem", "generate", "revoke", "delete"].includes(action)) return json({ error: "Unknown action." }, 400);
 
     if (action === "redeem") {
       const code = normalize(String(body.code ?? ""));
@@ -97,7 +97,7 @@ Deno.serve(async (request) => {
       .select("id,age_band,user_id,account_type")
       .eq("id", profileID)
       .single();
-    if (!profile || maximumAge(profile.age_band) === null || maximumAge(profile.age_band)! >= 18) {
+    if (!profile || (action !== "delete" && (maximumAge(profile.age_band) === null || maximumAge(profile.age_band)! >= 18))) {
       return json({ error: "Child access is only available for profiles under 18." }, 400);
     }
 
@@ -112,27 +112,19 @@ Deno.serve(async (request) => {
 
     if (credentialError) throw credentialError;
 
-    if (action === "revoke") {
+    if (action === "revoke" || action === "delete") {
       const authUserID = profile.user_id ?? existing?.auth_user_id;
-      if (authUserID === parentID) return json({ error: "Cannot revoke your own account here." }, 400);
+      if (authUserID === parentID) return json({ error: "Cannot change your own account here." }, 400);
       if (authUserID) {
-        // Suspend sign-in without deleting email identities or their ticket history.
         const { error } = await admin.auth.admin.updateUserById(authUserID, { ban_duration: "876000h" });
         if (error) throw error;
       }
-      await admin.from("child_access_credentials").delete().eq("youth_profile_id", profileID).throwOnError();
-      if (authUserID) {
-        await admin.from("user_roles").delete().eq("user_id", authUserID).eq("role", "youth").throwOnError();
-      }
-      // Unlink ownership so existing JWTs no longer grant access to this profile.
-      // Keep guardian links, saves, and the profile ID; new codes can restore access.
-      await admin.from("youth_profiles").update({ user_id: null, account_type: "parent_managed" })
-        .eq("id", profileID).select("id").single().throwOnError();
-      if (authUserID && profile.account_type === "parent_managed") {
-        const { error } = await admin.auth.admin.deleteUser(authUserID);
-        if (error) throw error;
-      }
-      return json({ revoked: true });
+      const { data: completed, error } = await admin.rpc(
+        action === "revoke" ? "revoke_child_access" : "delete_child_profile",
+        { profile_id: profileID, parent_id: parentID },
+      );
+      if (error || completed !== true) throw new Error("Child operation failed");
+      return json(action === "revoke" ? { revoked: true } : { deleted: true });
     }
 
     if (action !== "generate") return json({ error: "Unknown action." }, 400);
@@ -144,13 +136,13 @@ Deno.serve(async (request) => {
 
     if (authUserID) {
       const { error } = await admin.auth.admin.updateUserById(authUserID, {
-        email, password: accessCode, email_confirm: true,
+        email, password: accessCode, email_confirm: true, ban_duration: "none",
         app_metadata: { account_kind: "parent_managed_child" },
       });
       if (error) throw error;
     } else {
       const { data, error } = await admin.auth.admin.createUser({
-        email, password: accessCode, email_confirm: true,
+        email, password: accessCode, email_confirm: true, ban_duration: "none",
         app_metadata: { account_kind: "parent_managed_child" },
       });
       if (error) throw error;

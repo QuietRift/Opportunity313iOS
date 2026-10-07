@@ -3,6 +3,22 @@ import Testing
 @testable import Opportunity313
 
 struct TicketTests {
+    @Test func accountDeletionClearsOnlyTheOwnersLocalTicketCodesAndHolds() {
+        let owner = UUID(), other = UUID(), ticket = UUID()
+        #expect(TicketTokenStore.save("owner-code", userID: owner, ticketID: ticket))
+        #expect(TicketTokenStore.save("other-code", userID: other, ticketID: ticket))
+        let ownerKey = "opportunity313.ticketHold.\(owner).fixture"
+        let otherKey = "opportunity313.ticketHold.\(other).fixture"
+        UserDefaults.standard.set("owner", forKey: ownerKey)
+        UserDefaults.standard.set("other", forKey: otherKey)
+        defer { TicketTokenStore.removeAll(userID: owner); TicketTokenStore.removeAll(userID: other) }
+        TicketTokenStore.removeAll(userID: owner)
+        #expect(TicketTokenStore.read(userID: owner, ticketID: ticket) == nil)
+        #expect(TicketTokenStore.read(userID: other, ticketID: ticket) == "other-code")
+        #expect(UserDefaults.standard.string(forKey: ownerKey) == nil)
+        #expect(UserDefaults.standard.string(forKey: otherKey) == "other")
+    }
+
     @Test func entryCodesAcceptOnlyRawTokensOrTicketPayloads() {
         let valid = String(repeating: "a1", count: 32)
         #expect(TicketCode.token(from: valid) == valid)

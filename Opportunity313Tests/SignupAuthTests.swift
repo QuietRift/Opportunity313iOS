@@ -240,6 +240,43 @@ struct SignupAuthTests {
         #expect(SocialSignIn.hash("abc") == "ba7816bf8f01cfea414140de5dae2223b00361a396177a9cb410ff61f20015ad")
     }
 
+    @Test @MainActor func deletionOnlySignsOutAfterServerConfirmsSuccess() async throws {
+        for scenario in ["deleteSuccess", "deleteFailure", "deleteMalformed"] {
+            let (client, fixture) = makeClient(scenario)
+            try await client.auth.signIn(email: "fixture@example.org", password: "fixture-only-password")
+            let service = AuthService(client: client)
+            await service.loadUserRole()
+            let deleted = await service.deleteAccount()
+            #expect(deleted == (scenario == "deleteSuccess"))
+            #expect((client.auth.currentSession == nil) == deleted)
+            if !deleted { #expect(service.errorMessage != nil) }
+            let request = try #require(SignupFixtureProtocol.recorder.requests(fixture).first { $0.url?.path == "/functions/v1/delete-account" })
+            let body = try #require(SignupFixtureProtocol.body(request) as? [String: Any])
+            #expect(body["confirmation"] as? String == "DELETE")
+            #expect(body["userID"] == nil)
+        }
+    }
+
+    @Test @MainActor func childDeletionRequiresAnExplicitServerConfirmation() async {
+        for scenario in ["childDeleted", "childDeleteFailure", "childDeleteMalformed"] {
+            let (client, _) = makeClient(scenario)
+            let service = ChildAccessService(client: client)
+            #expect(await service.deleteProfile(for: UUID()) == (scenario == "childDeleted"))
+        }
+    }
+
+    @Test @MainActor func emailPreferencesDefaultOnAndSaveConfirmedOptOut() async throws {
+        let (client, fixture) = makeClient("preferences")
+        try await client.auth.signIn(email: "fixture@example.org", password: "fixture-only-password")
+        let service = EmailPreferencesService(client: client)
+        await service.load()
+        #expect(service.enabled == true)
+        await service.save(enabled: false)
+        #expect(service.enabled == false && service.statusMessage != nil)
+        let request = try #require(SignupFixtureProtocol.recorder.requests(fixture).first { $0.url?.path == "/rest/v1/email_preferences" && $0.httpMethod == "POST" })
+        #expect((SignupFixtureProtocol.body(request) as? [String: Any])?["updates_enabled"] as? Bool == false)
+    }
+
     @MainActor private func makeSocialService(_ scenario: String) async -> (AuthService, String) {
         let (client, fixture) = makeClient(scenario)
         let service = AuthService(client: client, socialProviderLoader: { .init(external: ["apple": true, "google": true]) })
@@ -306,6 +343,12 @@ private final class SignupFixtureProtocol: URLProtocol, @unchecked Sendable {
         case "/auth/v1/token", "/auth/v1/verify":
             if scenario == "socialTokenFailure" { status = 400; payload = ["error": "invalid_grant", "error_description": "Fixture exchange failed"] }
             else { payload = session }
+        case "/functions/v1/delete-account":
+            status = scenario == "deleteFailure" ? 503 : 200
+            payload = ["deleted": scenario == "deleteSuccess"]
+        case "/rest/v1/email_preferences":
+            payload = request.httpMethod == "POST" ? ["user_id": "00000000-0000-0000-0000-000000000031", "updates_enabled": false] : NSNull()
+        case "/auth/v1/logout": payload = [:]
         case "/auth/v1/settings": payload = ["external": ["apple": true, "google": false]]
         case "/auth/v1/recover": payload = [:]
         case "/auth/v1/user": payload = user
@@ -313,7 +356,11 @@ private final class SignupFixtureProtocol: URLProtocol, @unchecked Sendable {
         case "/rest/v1/guardian_relationships": payload = []
         case "/functions/v1/child-access":
             let count = Self.recorder.requests(fixture).filter { $0.url?.path == "/functions/v1/child-access" }.count
-            if scenario == "childRetry" && count == 1 { status = 500; payload = ["error": "Fixture service unavailable"] }
+            if scenario.hasPrefix("childDelete") {
+                status = scenario == "childDeleteFailure" ? 503 : 200
+                payload = ["deleted": scenario == "childDeleted"]
+            }
+            else if scenario == "childRetry" && count == 1 { status = 500; payload = ["error": "Fixture service unavailable"] }
             else { payload = ["code": scenario == "childMalformed" ? "invalid" : "O313-ABCD-EFGH-JKLM", "expiresAt": scenario == "childExpired" ? "2020-01-01T00:00:00Z" : "2099-01-01T00:00:00Z"] }
         case "/rest/v1/user_roles": payload = scenario == "existingParent" ? [["role": "parent"]] : []
         case "/rest/v1/rpc/claim_onboarding_role":

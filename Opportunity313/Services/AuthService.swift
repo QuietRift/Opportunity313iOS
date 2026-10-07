@@ -255,8 +255,33 @@ final class AuthService: ObservableObject {
         }
     }
 
-    /// Clear this device's session when an account was removed or the user
-    /// wants to use a different login. This does not sign out other devices.
+    var requiresAppleDeletionConfirmation: Bool {
+        supabase.auth.currentUser?.identities?.contains { $0.provider == "apple" } == true
+    }
+
+    func deleteAccount(appleAuthorizationCode: String? = nil) async -> Bool {
+        struct Request: Encodable { let confirmation = "DELETE"; let appleAuthorizationCode: String? }
+        struct Response: Decodable { let deleted: Bool }
+        guard !isLoading else { return false }
+        isLoading = true
+        errorMessage = nil
+        defer { isLoading = false }
+        do {
+            let response: Response = try await supabase.functions.invoke("delete-account", options: FunctionInvokeOptions(body: Request(appleAuthorizationCode: appleAuthorizationCode)))
+            guard response.deleted else { throw SocialSignIn.Failure(message: "Account deletion was not confirmed. Please try again.") }
+            if let owner = supabase.auth.currentUser?.id { TicketTokenStore.removeAll(userID: owner) }
+            await OpportunityAlerts.shared.disable()
+            await switchAccount()
+            displayName = ""
+            email = ""
+            return true
+        } catch {
+            errorMessage = "We couldn’t finish deleting your account. Please try again. Your account has not been confirmed as deleted."
+            return false
+        }
+    }
+
+    /// Clear this device’s session after deletion or when switching accounts.
     func switchAccount() async {
         // The Auth client removes its stored session before contacting the
         // server, so a deleted account can still be cleared on this device.

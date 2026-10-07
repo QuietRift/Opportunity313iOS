@@ -183,11 +183,20 @@ struct ProfileSettingsView: View {
     @AppStorage("opportunity313.colorway") private var colorway = AppColorway.light.rawValue
     var body: some View {
         Form {
-            Section("Account") { LabeledContent("Email", value: authService.email) }
+            Section("Account") { LabeledContent("Sign-In", value: authService.email.hasSuffix("@access.opportunity313.invalid") ? "Parent-managed access code" : authService.email) }
+            Section("Email Notifications") {
+                NavigationLink("Email Preferences") { EmailPreferencesView() }.accessibilityIdentifier("emailPreferencesLink")
+            }
             Section("Appearance") {
                 Picker("Colorway", selection: $colorway) {
                     ForEach(AppColorway.allCases) { Text($0.title).tag($0.rawValue) }
                 }.pickerStyle(.segmented)
+            }
+            Section {
+                NavigationLink("Delete My Account") { AccountDeletionView() }.accessibilityIdentifier("accountDeletionLink")
+                    .foregroundStyle(.red)
+            } footer: {
+                Text("Permanent account deletion is separate from revoking a child’s sign-in access.")
             }
             Section("Youth Privacy") {
                 Text("Youth profiles use age groups instead of birth dates. School and transportation details are not collected. Accessibility preferences are optional.")

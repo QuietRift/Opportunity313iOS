@@ -34,12 +34,12 @@ Sarai's profile type changed from `parent_managed` to `youth_account` so the
 existing email-login flow can find her profile. This matches Kevin's test setup
 and is a development exception to the under-18 access-code model.
 
-Parents always see **Revoke Access**, including for email-linked children. After
+Parents always see **Revoke Child Access**, including for email-linked children. After
 confirmation, revocation suspends that child's login, removes its youth role,
 and unlinks it from the youth profile. The profile becomes parent-managed;
 its ID, family links, saved opportunities, and history remain. A parent can then
 create a new access code. Email Auth identities are retained (banned), not deleted.
-Generated-code identities retain the existing deletion behavior after unlinking.
+Generated-code identities are also retained, banned and disconnected. A new code restores the same identity and profile; revocation never deletes the child’s changes. Only the separate Delete Child Profile confirmation removes the profile and its data.
 Access-code generation remains blocked while an email account is linked.
 
 The October 2 update does not itself revoke either test login. Only confirming
