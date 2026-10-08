@@ -32,7 +32,7 @@ private final class TransitOrigin: NSObject, ObservableObject, CLLocationManager
     func locationManager(_ manager: CLLocationManager, didUpdateLocations locations: [CLLocation]) {
         guard let last = locations.last else { return }
         coordinate = last.coordinate
-        message = "Starting from your current location. Refresh to update the route."
+        message = "Starting from your current location."
     }
 
     func locationManager(_ manager: CLLocationManager, didFailWithError error: Error) {
@@ -54,7 +54,7 @@ struct TransitDirectionsSection: View {
 
     var body: some View {
         VStack(alignment: .leading, spacing: 12) {
-            Label("Bus Routes to This Event", systemImage: "bus.fill")
+            Label("Transit Directions", systemImage: "bus.fill")
                 .font(.headline)
             Text("Destination: \(usableDestination)").font(.subheadline)
             TextField("Starting address (optional)", text: $startingAddress)
@@ -64,7 +64,7 @@ struct TransitDirectionsSection: View {
                 .background(.quaternary, in: RoundedRectangle(cornerRadius: 10))
             Button {
                 origin.refresh()
-            } label: { Label("Use or Refresh My Location", systemImage: "location") }
+            } label: { Label("Use Current Location", systemImage: "location") }
             if let message = origin.message { Text(message).font(.footnote).foregroundStyle(.secondary) }
             Button {
                 var components = URLComponents(string: "https://maps.apple.com/")!
@@ -78,10 +78,8 @@ struct TransitDirectionsSection: View {
                 }
                 components.queryItems = items
                 if let url = components.url { openURL(url) }
-            } label: { Label("View Bus Routes & Transfers", systemImage: "arrow.triangle.turn.up.right.diamond") }
+            } label: { Label("View Transit Routes", systemImage: "arrow.triangle.turn.up.right.diamond") }
                 .buttonStyle(.borderedProminent)
-            Text("Apple Maps shows available transit lines, transfers, walking legs and travel times. Refresh your location to recalculate before you leave.")
-                .font(.footnote).foregroundStyle(.secondary)
         }
         .padding(16)
         .frame(maxWidth: .infinity, alignment: .leading)

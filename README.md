@@ -72,6 +72,23 @@ and highlights accessibility and engineering decisions. Changes pushed to the
 connected GitHub repository deploy automatically to
 `https://opportunity313.netlify.app`.
 
+## Provider website
+
+The responsive provider workspace lives at `website/provider/` as an
+unlisted direct URL with no-index headers. It is not linked from the public
+homepage. It uses the same Opportunity313 Supabase project as the iOS
+app. Providers can sign in, create an account, register an organization, see
+verification status, view submissions, and submit opportunities for review.
+The unsigned preview uses clearly labeled sample data and makes no backend
+changes. Sessions stay in the browser tab and sign-out clears them.
+
+The current backend still sends every provider submission to Admin review.
+Organization tax/registration ID collection and automated verification are not
+connected, so the site explicitly does not ask for those identifiers yet. Do
+not treat the preview or verification copy as proof that automatic approval is
+live. Add a secure verification service and backend publication rules before
+changing that language or behavior.
+
 ## Architecture and configuration
 
 SwiftUI features call main-actor service objects using `supabase-swift`.

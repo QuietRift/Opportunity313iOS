@@ -1,6 +1,7 @@
 import SwiftUI
 
 private struct OpportunityCardSurface: ViewModifier {
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     let cornerRadius: CGFloat
 
@@ -38,6 +39,7 @@ extension View {
 }
 
 struct HomeView: View {
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
     @Environment(\.dynamicTypeSize) private var dynamicTypeSize
     @StateObject private var profileService = YouthProfileService()
@@ -62,6 +64,25 @@ struct HomeView: View {
                     interestSection
                     recommendedSection
                     deadlineSection
+                    NavigationLink { MyRegistrationsView() } label: {
+                        ParentDashboardCard(
+                            title: "My Registrations",
+                            description: "View your registrations and attendance.",
+                            icon: "checklist"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("youthRegistrationsShortcut")
+
+                    NavigationLink { DashboardTicketsListView() } label: {
+                        ParentDashboardCard(
+                            title: "Tickets",
+                            description: "View your tickets and get event tickets.",
+                            icon: "ticket.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("youthTicketsShortcut")
                 }
                 .padding(20)
                 .frame(maxWidth: 800)
@@ -71,6 +92,7 @@ struct HomeView: View {
             .background(Opportunity313Brand.canvas(for: colorScheme).opacity(colorScheme == .dark ? 1 : 0.34))
             .toolbar(.hidden, for: .navigationBar)
             .task { await reload() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await opportunityService.fetchOpportunities() } } }
             .refreshable { await reload() }
             .sheet(isPresented: $showUpdates) {
                 NavigationStack {
@@ -133,12 +155,11 @@ struct HomeView: View {
                     NavigationLink { OpportunityDetailView(opportunity: opportunity) } label: {
                         HStack(spacing: 16) {
                             VStack(alignment: .leading, spacing: 10) {
-                                Text("DISCOVER OPPORTUNITIES").font(.caption.bold())
                                 Text(opportunity.title)
                                     .font(.title2.bold())
                                     .lineLimit(dynamicTypeSize.isAccessibilitySize ? nil : 3)
                                 Text(opportunity.neighborhood ?? opportunity.city).font(.subheadline)
-                                Text("Explore opportunity  →").font(.subheadline.bold())
+                                Text("View details  →").font(.subheadline.bold())
                                     .padding(.horizontal, 14).padding(.vertical, 10)
                                     .background(.white.opacity(0.2), in: Capsule())
                             }
@@ -193,7 +214,7 @@ struct HomeView: View {
                     .accessibilityIdentifier("seeMoreRecommendations")
             }
             if !opportunityService.isLoading && recommendedOpportunities.isEmpty {
-                Text("More matches are coming. Explore Discover for other opportunities.").font(.subheadline).foregroundStyle(.secondary)
+                Text("No matches yet. Browse Discover for more opportunities.").font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {
@@ -210,7 +231,7 @@ struct HomeView: View {
         VStack(alignment: .leading, spacing: 14) {
             Text("Deadlines Coming Up").font(.title2.bold())
             if upcomingDeadlines.isEmpty {
-                Text("No upcoming deadlines right now.").font(.subheadline).foregroundStyle(.secondary)
+                Text("No upcoming deadlines.").font(.subheadline).foregroundStyle(.secondary)
             } else {
                 ScrollView(.horizontal, showsIndicators: false) {
                     HStack(alignment: .top, spacing: 16) {

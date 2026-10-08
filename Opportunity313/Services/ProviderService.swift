@@ -14,6 +14,7 @@ final class ProviderService: ObservableObject {
 
     @Published var organization: Organization?
     @Published var isLoading = false
+    @Published private(set) var isSaving = false
     @Published var errorMessage: String?
 
     private let supabase =
@@ -107,91 +108,29 @@ final class ProviderService: ObservableObject {
     }
 
 
-    // MARK: - Register Organization
-
-    func registerOrganization(
-        name: String,
-        type: String,
-        description: String
-    ) async throws {
-
-        isLoading = true
-        errorMessage = nil
-
-        defer {
-            isLoading = false
-        }
-
-
+    // A single transaction creates the organization/membership or updates its editable fields.
+    func saveProfile(_ draft: OrganizationProfileDraft, organizationID: UUID? = nil) async throws {
+        if let message = draft.validationMessage { throw OrganizationProfileError.invalid(message) }
+        isSaving = true
+        defer { isSaving = false }
         struct Params: Encodable {
-
-            let organizationName: String
-            let requestedType: String
-            let organizationDescription: String?
-
-            enum CodingKeys:
-                String,
-                CodingKey {
-
-                case organizationName =
-                    "organization_name"
-
-                case requestedType =
-                    "requested_type"
-
-                case organizationDescription =
-                    "organization_description"
+            let target_organization_id: UUID?
+            let profile: OrganizationProfileDraft
+            enum CodingKeys: String, CodingKey { case target_organization_id, profile }
+            func encode(to encoder: Encoder) throws {
+                var container = encoder.container(keyedBy: CodingKeys.self)
+                try container.encode(target_organization_id, forKey: .target_organization_id)
+                try container.encode(profile, forKey: .profile)
             }
         }
-
-
-        let cleanName =
-            name.trimmingCharacters(
-                in: .whitespacesAndNewlines
-            )
-
-        let cleanDescription =
-            description
-                .trimmingCharacters(
-                    in: .whitespacesAndNewlines
-                )
-
-
-        let params = Params(
-            organizationName: cleanName,
-            requestedType: type,
-            organizationDescription:
-                cleanDescription.isEmpty
-                ? nil
-                : cleanDescription
-        )
-
-
         do {
-
-            let createdOrganization:
-                Organization =
-                try await supabase
-                    .rpc(
-                        "register_provider_organization",
-                        params: params
-                    )
-                    .execute()
-                    .value
-
-
-            organization =
-                createdOrganization
-
+            organization = try await supabase.rpc("save_organization_profile", params: Params(
+                target_organization_id: organizationID, profile: draft.cleaned
+            )).execute().value
         } catch {
-
-            errorMessage =
-                error.localizedDescription
-
             throw error
         }
     }
-
 
     // MARK: - Clear Error
 

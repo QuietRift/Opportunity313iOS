@@ -9,6 +9,7 @@ import SwiftUI
 
 struct DiscoverView: View {
 
+    @Environment(\.scenePhase) private var scenePhase
     @Environment(\.colorScheme) private var colorScheme
 
     private let categoryCatalog = [
@@ -111,6 +112,7 @@ struct DiscoverView: View {
                 )
             }
             .task { await reload() }
+            .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await opportunityService.fetchOpportunities() } } }
             .refreshable { await reload() }
             .onReceive(
                 NotificationCenter.default.publisher(
@@ -158,7 +160,7 @@ struct DiscoverView: View {
                 .frame(maxWidth: .infinity, alignment: .leading)
         } else {
             HStack {
-                Text("Showing opportunities for").font(.subheadline).foregroundStyle(.secondary)
+                Text("Browsing for").font(.subheadline).foregroundStyle(.secondary)
                 Spacer()
                 Picker("Child", selection: $selectedChildID) {
                     ForEach(childService.children) { child in
@@ -190,8 +192,6 @@ struct DiscoverView: View {
         HStack {
             VStack(alignment: .leading, spacing: 2) {
                 Text("Discover").font(.title2.bold())
-                Text("Find what's next in Detroit.")
-                    .font(.subheadline).foregroundStyle(.secondary)
             }
             Spacer()
             Button { showFilters = true } label: {

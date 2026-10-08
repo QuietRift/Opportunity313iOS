@@ -54,10 +54,16 @@ struct ProviderOpportunitiesView: View {
                             .opportunities
                     ) { opportunity in
 
-                        ProviderOpportunityRow(
-                            opportunity:
-                                opportunity
-                        )
+                        if opportunity.offersInAppTickets {
+                            NavigationLink { OpportunityAttendeesView(opportunity: opportunity) } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ProviderOpportunityRow(opportunity: opportunity)
+                                    Label("View Attendees", systemImage: "person.2").font(.caption)
+                                }
+                            }
+                        } else {
+                            ProviderOpportunityRow(opportunity: opportunity)
+                        }
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)
@@ -208,30 +214,6 @@ struct ProviderOpportunityRow: View {
 
     private var statusLabel: String {
 
-        switch opportunity.status {
-
-        case "pending_review":
-            return "Pending Review"
-
-        case "published":
-            return "Published"
-
-        case "draft":
-            return "Draft"
-
-        case "paused":
-            return "Paused"
-
-        case "closed":
-            return "Closed"
-
-        default:
-            return opportunity.status
-                .replacingOccurrences(
-                    of: "_",
-                    with: " "
-                )
-                .capitalized
-        }
+        opportunity.organizationApprovalStatus
     }
 }

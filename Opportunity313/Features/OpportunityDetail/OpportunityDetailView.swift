@@ -14,6 +14,9 @@ struct OpportunityDetailView: View {
     @EnvironmentObject var familySaveService: FamilySaveService
     @EnvironmentObject var authService: AuthService
 
+    @State private var showRegistration = false
+    @State private var showIssueReport = false
+
     let opportunity: Opportunity
     var managedYouthProfileID: UUID? = nil
 
@@ -349,6 +352,16 @@ struct OpportunityDetailView: View {
                         )
                     }
 
+                    if opportunity.offersInAppTickets && ["parent", "youth"].contains(authService.role ?? "") {
+                        Button { showRegistration = true } label: {
+                            Label("Get Ticket / Register", systemImage: "ticket")
+                                .font(.headline).frame(maxWidth: .infinity).padding()
+                                .background(Opportunity313Brand.accent, in: RoundedRectangle(cornerRadius: 16))
+                                .foregroundStyle(.white)
+                        }
+                        .accessibilityIdentifier("getOpportunityTicket")
+                    }
+
                     if let registrationURL =
                         opportunity.registrationUrl,
                        let url =
@@ -409,6 +422,10 @@ struct OpportunityDetailView: View {
             .inline
         )
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu { Button("Report an Issue") { showIssueReport = true } } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("Opportunity actions")
+            }
 
             if authService.role == "youth" ||
                 (authService.role == "parent" && managedYouthProfileID != nil) {
@@ -455,6 +472,15 @@ struct OpportunityDetailView: View {
             if let managedYouthProfileID {
                 await familySaveService.loadSaves(for: [managedYouthProfileID])
             }
+        }
+        .sheet(isPresented: $showIssueReport) {
+            NavigationStack {
+                ReportIssueView(opportunityID: opportunity.id, opportunityName: opportunity.title, initialCategory: .opportunity)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showIssueReport = false } } }
+            }
+        }
+        .sheet(isPresented: $showRegistration) {
+            OpportunityRegistrationView(opportunity: opportunity, initialYouthProfileID: managedYouthProfileID)
         }
         .opportunity313PageBackground()
     }

@@ -65,6 +65,9 @@ enum AppColorway: String, CaseIterable, Identifiable {
 
 @main
 struct Opportunity313App: App {
+    @UIApplicationDelegateAdaptor(OpportunityAppDelegate.self) private var appDelegate
+    @ObservedObject private var opportunityAlerts = OpportunityAlerts.shared
+    @Environment(\.scenePhase) private var scenePhase
 
     @AppStorage("opportunity313.colorway") private var colorway = AppColorway.light.rawValue
 
@@ -82,6 +85,10 @@ struct Opportunity313App: App {
         WindowGroup {
 
             ContentView()
+                .sheet(isPresented: Binding(get: { opportunityAlerts.openedOpportunityID != nil }, set: { if !$0 { opportunityAlerts.openedOpportunityID = nil } })) {
+                    if let id = opportunityAlerts.openedOpportunityID { NotificationOpportunityView(id: id) }
+                }
+                .onChange(of: scenePhase) { _, phase in if phase == .active { Task { await opportunityAlerts.refresh() } } }
                 .tint(Opportunity313Brand.accent)
                 .preferredColorScheme(
                     AppColorway(rawValue: colorway)?.colorScheme ?? .light

@@ -28,6 +28,7 @@ struct ParentHomeView: View {
 
                     dashboardHeader
 
+
                     Button(action: onChildren) {
                         ParentDashboardCard(
                             title: "Your Children",
@@ -43,7 +44,7 @@ struct ParentHomeView: View {
                         ParentDashboardCard(
                             title: "Saved Opportunities",
                             description:
-                                "Keep track of programs your family is considering.",
+                                "Your family's saved programs.",
                             icon: "bookmark.fill"
                         )
                     }
@@ -54,13 +55,33 @@ struct ParentHomeView: View {
                         ParentDashboardCard(
                             title: "Upcoming Deadlines",
                             description:
-                                "Stay ahead of registrations and important dates.",
+                                "Registration deadlines.",
                             icon:
                                 "calendar.badge.exclamationmark"
                         )
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("parentDeadlinesShortcut")
+
+                    NavigationLink { MyRegistrationsView() } label: {
+                        ParentDashboardCard(
+                            title: "My Registrations",
+                            description: "View your family's registrations and attendance.",
+                            icon: "checklist"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentRegistrationsShortcut")
+
+                    NavigationLink { DashboardTicketsListView() } label: {
+                        ParentDashboardCard(
+                            title: "Tickets",
+                            description: "View your family's tickets and get event tickets.",
+                            icon: "ticket.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentTicketsShortcut")
                 }
                 .frame(maxWidth: 800)
                 .frame(maxWidth: .infinity)
@@ -73,18 +94,9 @@ struct ParentHomeView: View {
 
     private var dashboardHeader: some View {
         VStack(alignment: .leading, spacing: 10) {
-            Text("BUILT FOR DETROIT FAMILIES")
-                .font(.caption.weight(.bold))
-                .tracking(1.1)
-                .foregroundStyle(Opportunity313Brand.accent)
-
             Text("Parent Dashboard")
                 .font(.largeTitle.bold())
                 .foregroundStyle(.white)
-
-            Text("Help your family discover what's next.")
-                .font(.body)
-                .foregroundStyle(.white.opacity(0.82))
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(24)

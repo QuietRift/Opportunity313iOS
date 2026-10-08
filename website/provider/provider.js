@@ -1,275 +1,373 @@
-const SUPABASE_URL = "https://pinpurdjfbvxrwexzlre.supabase.co";
-// This publishable client key is also used by the iOS app. It is not an admin key.
-const PUBLISHABLE_KEY = "sb_publishable_SE20ynXjKObWJ7AeOwfw8A_8lSAJ83q";
 const SESSION_KEY = "opportunity313-provider-session";
-
-const sample = [
-  { id: "sample-1", title: "Future Builders Workshop", category: "Skilled Trades", status: "published", created_at: "2026-09-19T12:00:00Z" },
-  { id: "sample-2", title: "Creative Studio Lab", category: "Arts", status: "pending_review", created_at: "2026-09-22T12:00:00Z" },
-  { id: "sample-3", title: "Saturday Skills Clinic", category: "Sports", status: "draft", created_at: "2026-09-24T12:00:00Z" }
-];
-const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", authMode: "signin" };
 const $ = (selector) => document.querySelector(selector);
 const $$ = (selector) => [...document.querySelectorAll(selector)];
-const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (character) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[character]);
-const titleCase = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (letter) => letter.toUpperCase());
+const escapeHTML = (value) => String(value ?? "").replace(/[&<>"']/g, (c) => ({ "&": "&amp;", "<": "&lt;", ">": "&gt;", '"': "&quot;", "'": "&#39;" })[c]);
+const titleCase = (value) => String(value || "").replace(/_/g, " ").replace(/\b\w/g, (c) => c.toUpperCase());
+const profileKeys = ["name", "organization_type", "description", "website", "contact_name", "contact_email", "contact_phone", "service_area", "address", "city"];
+const sample = [
+  { id: "sample-1", title: "Future Builders Workshop", category: "Skilled Trades", status: "published", verification_status: "verified", created_at: "2026-09-19T12:00:00Z", summary: "Sample: a hands-on introduction to skilled trades for Detroit youth.", location_name: "Sample community center", is_free: true },
+  { id: "sample-2", title: "Creative Studio Lab", category: "Arts", status: "pending_review", verification_status: "pending", created_at: "2026-09-22T12:00:00Z", summary: "Sample: an afternoon of drawing, design, and creative collaboration.", is_free: true },
+  { id: "sample-3", title: "Saturday Skills Clinic", category: "Sports", status: "closed", verification_status: "rejected", created_at: "2026-09-24T12:00:00Z", summary: "Sample: a sports clinic submission that was not approved.", is_free: true }
+];
+const sampleOrganization = { name: "Detroit Community Partners", organization_type: "community_provider", description: "Sample organization connecting Detroit youth with local programs.", website: "https://example.org", contact_name: "Sample contact", contact_email: "hello@example.org", contact_phone: "", service_area: "Detroit", address: "", city: "Detroit", verification_status: "pending" };
+const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", busy: 0, loading: false, epoch: 0, profileDirty: false, confirmationEmail: null };
+let supportRequestID = crypto.randomUUID();
+let reportsVersion = 0;
+let detailID = null;
+let updateRequestID = crypto.randomUUID();
+let rosterVersion = 0;
+let refreshPromise;
+let loadPromise;
 
 function showNotice(message, error = false) {
-  const notice = $("#notice");
-  notice.textContent = message;
-  notice.classList.toggle("error", error);
-  notice.hidden = false;
-  clearTimeout(showNotice.timeout);
-  showNotice.timeout = setTimeout(() => { notice.hidden = true; }, 7000);
+  const notice = $("#notice"); notice.textContent = message;
+  notice.classList.toggle("error-banner", error); notice.hidden = false;
 }
-
+function showFormError(selector, message) { const element = $(selector); element.textContent = message; element.hidden = !message; }
+function updateActions() {
+  $("#account-action").textContent = state.session ? "Sign out" : "Sign in";
+  $("#account-action").disabled = state.busy > 0 || state.loading;
+  $("#report-issue").disabled = state.busy > 0 || state.loading;
+  $("#refresh-workspace").hidden = !state.session;
+  $("#refresh-workspace").disabled = state.busy > 0 || state.loading;
+  $("#retry-workspace").disabled = state.loading;
+  $("#load-status").hidden = !state.loading;
+  $$(".create-button").forEach((button) => { button.disabled = state.busy > 0 || state.loading; });
+}
 function setBusy(form, busy) {
-  const button = form.querySelector('button[type="submit"]');
-  if (!button) return;
-  if (!button.dataset.label) button.dataset.label = button.innerHTML;
-  button.disabled = busy;
-  button.innerHTML = busy ? "Please wait…" : button.dataset.label;
+  if ((form.dataset.busy === "true") === busy) return;
+  form.dataset.busy = String(busy); form.setAttribute("aria-busy", String(busy));
+  state.busy += busy ? 1 : -1;
+  $$(`#${form.id} button`).forEach((button) => {
+    if (button.type === "submit") {
+      if (!button.dataset.label) button.dataset.label = button.textContent;
+      button.textContent = busy ? "Saving…" : button.dataset.label;
+    }
+    button.disabled = busy;
+  });
+  form.querySelectorAll("input,select,textarea").forEach((control) => {
+    if (busy) control.dataset.wasDisabled = String(control.disabled);
+    control.disabled = busy || control.dataset.wasDisabled === "true";
+  });
+  const dialog = form.closest("dialog");
+  if (dialog) dialog.querySelectorAll("button").forEach((button) => { button.disabled = busy; });
+  updateActions();
 }
-
-function showFormError(selector, message) {
-  const element = $(selector);
-  element.textContent = message;
-  element.hidden = !message;
-}
-
-async function request(path, { method = "GET", body, auth = true, refresh = true } = {}) {
-  if (auth && refresh) await ensureFreshSession();
-  const headers = { apikey: PUBLISHABLE_KEY, "Content-Type": "application/json" };
-  if (auth && state.session?.access_token) headers.Authorization = `Bearer ${state.session.access_token}`;
-  const response = await fetch(`${SUPABASE_URL}${path}`, { method, headers, body: body === undefined ? undefined : JSON.stringify(body) });
-  if (!response.ok) {
-    let detail = "Please try again.";
-    try { const data = await response.json(); detail = data.msg || data.message || data.error_description || data.error || detail; } catch { /* keep the generic message */ }
-    throw new Error(typeof detail === "string" ? detail : "Please try again.");
-  }
-  if (response.status === 204) return null;
-  const text = await response.text();
-  return text ? JSON.parse(text) : null;
-}
-
 function saveSession(session) {
   state.session = session;
-  if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session));
-  else sessionStorage.removeItem(SESSION_KEY);
+  try { if (session) sessionStorage.setItem(SESSION_KEY, JSON.stringify(session)); else sessionStorage.removeItem(SESSION_KEY); }
+  catch { /* Keep the session in memory when storage is unavailable. */ }
 }
-
+async function request(path, { method = "GET", body, auth = true, refresh = true } = {}) {
+  if (auth && refresh) await ensureFreshSession();
+  return Opportunity313Auth.request(path, {method, body, session:auth ? state.session : null});
+}
 async function ensureFreshSession() {
   if (!state.session) throw new Error("Please sign in to continue.");
   if (Date.now() < (state.session.expires_at || 0) * 1000 - 60000) return;
-  const refreshed = await request("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: { refresh_token: state.session.refresh_token }, auth: false });
-  saveSession({ ...refreshed, expires_at: Math.floor(Date.now() / 1000) + refreshed.expires_in });
+  if (!refreshPromise) {
+    const epoch = state.epoch;
+    refreshPromise = request("/auth/v1/token?grant_type=refresh_token", { method: "POST", body: { refresh_token: state.session.refresh_token }, auth: false }).then((session) => {
+      if (epoch !== state.epoch) throw new Error("This session has ended. Please sign in again.");
+      saveSession({ ...session, expires_at: Math.floor(Date.now() / 1000) + session.expires_in });
+    }).finally(() => { refreshPromise = null; });
+  }
+  await refreshPromise;
 }
-
+async function fetchOpportunities() {
+  const rows = [];
+  while (true) {
+    const page = await request(`/rest/v1/opportunities?select=*&organization_id=eq.${encodeURIComponent(state.org.id)}&order=created_at.desc,id.desc&limit=200&offset=${rows.length}`);
+    rows.push(...page); if (page.length < 200) return rows;
+  }
+}
 async function loadProvider() {
-  const authUser = await request("/auth/v1/user");
-  state.user = authUser;
-  const roles = await request(`/rest/v1/user_roles?select=role&user_id=eq.${encodeURIComponent(authUser.id)}`);
-  if (!roles?.length) await request("/rest/v1/rpc/claim_onboarding_role", { method: "POST", body: { requested_role: "provider" } });
-  else if (!roles.some(({ role }) => role === "provider" || role === "athletics")) {
-    await signOut(false);
-    throw new Error("This account is not a provider account. Please use a provider login.");
-  }
-  const memberships = await request(`/rest/v1/org_members?select=organization_id&user_id=eq.${encodeURIComponent(authUser.id)}&status=eq.active&limit=1`);
-  if (!memberships?.length) {
-    state.org = null;
-    state.opportunities = [];
+  if (loadPromise) return loadPromise;
+  const epoch = state.epoch;
+  state.loading = true; updateActions(); $("#workspace-error").hidden = true;
+  loadPromise = (async () => {
+    const user = await request("/auth/v1/user");
+    const roles = await request(`/rest/v1/user_roles?select=role&user_id=eq.${encodeURIComponent(user.id)}`);
+    if (!roles.length) await request("/rest/v1/rpc/claim_onboarding_role", { method: "POST", body: { requested_role: "provider" } });
+    else if (!roles.some(({ role }) => role === "provider")) throw new Error("Use an Organization account for this workspace. Other account types keep their existing experiences in the app.");
+    if (epoch !== state.epoch) return;
+    state.user = user;
+    const memberships = await request(`/rest/v1/org_members?select=organization_id&user_id=eq.${encodeURIComponent(user.id)}&status=eq.active&limit=1`);
+    if (epoch !== state.epoch) return;
     state.preview = false;
-    render();
-    $("#setup-dialog").showModal();
-    return;
-  }
-  const orgs = await request(`/rest/v1/organizations?select=*&id=eq.${encodeURIComponent(memberships[0].organization_id)}&limit=1`);
-  if (!orgs?.length) throw new Error("Your organization could not be loaded.");
-  state.org = orgs[0];
-  state.opportunities = await request(`/rest/v1/opportunities?select=id,title,category,status,created_at,summary&organization_id=eq.${encodeURIComponent(state.org.id)}&order=created_at.desc&limit=100`);
-  state.preview = false;
-  render();
+    if (!memberships.length) {
+      state.org = null; state.opportunities = []; render(); setView("organization");
+      showNotice("Add your organization’s information to complete setup."); return;
+    }
+    const orgs = await request(`/rest/v1/organizations?select=*&id=eq.${encodeURIComponent(memberships[0].organization_id)}&limit=1`);
+    if (!orgs.length) throw new Error("Your organization could not be loaded. Try refreshing the workspace.");
+    if (epoch !== state.epoch) return;
+    state.org = orgs[0];
+    const opportunities = await fetchOpportunities();
+    if (epoch !== state.epoch) return;
+    state.opportunities = opportunities; render();
+  })().finally(() => { state.loading = false; loadPromise = null; updateActions(); });
+  return loadPromise;
 }
-
-function closeDialog(selector) { if ($(selector).open) $(selector).close(); }
+async function reloadWorkspace() {
+  try { await loadProvider(); showNotice("Workspace updated."); }
+  catch (error) { $("#workspace-error-message").textContent = error.message; $("#workspace-error").hidden = false; }
+}
 function setView(view) {
+  if (!["overview", "opportunities", "organization", "verification"].includes(view)) view = "overview";
   state.view = view;
-  $$(".view").forEach((section) => section.classList.toggle("active", section.id === `view-${view}`));
-  $$(".nav-item").forEach((button) => button.classList.toggle("active", button.dataset.view === view));
-  $("#crumb").textContent = titleCase(view);
-  window.scrollTo({ top: 0, behavior: "smooth" });
+  $$(".view").forEach((section) => { const active = section.id === `view-${view}`; section.classList.toggle("active", active); section.hidden = !active; });
+  $$(".nav-item").forEach((button) => { const active = button.dataset.view === view; button.classList.toggle("active", active); if (active) button.setAttribute("aria-current", "page"); else button.removeAttribute("aria-current"); });
+  $("#crumb").textContent = ({ overview: "Dashboard", opportunities: "Opportunities", organization: "Organization profile", verification: "Verification" })[view];
+  history.replaceState(null, "", `#${view}`);
+  window.scrollTo(0, 0);
 }
-
-function statusLabel(status) {
-  return ({ pending_review: "Awaiting review", published: "Published", draft: "Draft", draft_ai: "Draft", closed: "Closed", paused: "Paused" })[status] || titleCase(status);
+function approvalStatus(item) {
+  if (item.verification_status === "rejected") return "rejected";
+  if (item.status === "pending_review") return "pending";
+  if (item.status === "published") return "approved";
+  return "other";
 }
-
-function dateLabel(date) {
-  if (!date) return "—";
-  const parsed = new Date(date);
-  return Number.isNaN(parsed.getTime()) ? "—" : parsed.toLocaleDateString("en-US", { month: "short", day: "numeric", year: "numeric" });
+function statusLabel(item) { const status = approvalStatus(item); return status === "other" ? titleCase(item.status) : titleCase(status); }
+function badge(item) { return `<span class="pill ${approvalStatus(item)}">${escapeHTML(statusLabel(item))}</span>`; }
+function dateLabel(value, includeTime = false) {
+  if (!value) return "Not provided";
+  const parsed = new Date(value); if (Number.isNaN(parsed.getTime())) return "Not provided";
+  return parsed.toLocaleString("en-US", { timeZone: "America/Detroit", month: "short", day: "numeric", year: "numeric", ...(includeTime ? { hour: "numeric", minute: "2-digit", timeZoneName: "short" } : {}) });
 }
-
+function renderProfile() {
+  const org = state.preview ? sampleOrganization : state.org;
+  $("#org-name").textContent = org?.name || "Set up your organization";
+  $("#org-type").textContent = titleCase(org?.organization_type || "Organization account");
+  $("#org-id").textContent = state.preview ? "Sample organization" : org?.id || "Assigned after setup";
+  const status = org?.verification_status || "pending";
+  $("#org-verification").textContent = titleCase(status);
+  $("#org-verification").className = `pill ${status === "verified" ? "approved" : status === "rejected" ? "rejected" : "pending"}`;
+  $("#overview-verification").textContent = state.preview ? "Pending (sample)" : titleCase(status);
+  $("#verification-headline").textContent = status === "verified" ? "Organization verified" : status === "rejected" ? "Verification needs attention" : "Pending verification";
+  $("#verification-description").textContent = state.preview ? "Sample status. Sign in to check your organization." : status === "verified" ? "Your profile is verified. Every opportunity still requires admin approval before publication." : "Complete your profile so the Opportunity313 team can review it. You can submit opportunities while verification is pending.";
+  if (!state.profileDirty) profileKeys.forEach((key) => { $("#profile-form").elements[key].value = org?.[key] || (key === "organization_type" ? "nonprofit" : ""); });
+  $("#profile-fields").disabled = state.preview || !state.user;
+  $("#profile-save").disabled = state.preview || !state.user;
+  $("#profile-reset").disabled = state.preview || !state.user;
+  $("#profile-save").textContent = state.org ? "Save profile" : "Create organization";
+  $("#profile-save").dataset.label = $("#profile-save").textContent;
+  $("#profile-save-note").textContent = state.preview ? "Sign in to manage your organization profile." : "Organization ID and verification status are managed by Opportunity313.";
+}
 function render() {
-  const opportunities = state.opportunities || [];
-  const pending = opportunities.filter((item) => item.status === "pending_review").length;
-  const published = opportunities.filter((item) => item.status === "published").length;
-  const displayName = state.preview ? "Detroit" : (state.org?.name || state.user?.email?.split("@")[0] || "Provider").split(" ")[0];
-  $("#greeting-name").textContent = displayName;
-  $("#stat-total").textContent = opportunities.length;
-  $("#stat-pending").textContent = pending;
-  $("#stat-published").textContent = published;
+  const opportunities = state.opportunities;
+  ["pending", "approved", "rejected"].forEach((status) => { $(`#stat-${status}`).textContent = opportunities.filter((item) => approvalStatus(item) === status).length; });
   $("#filter-all").textContent = opportunities.length;
-  $("#nav-count").textContent = opportunities.length;
   $("#preview-banner").hidden = !state.preview;
-  $("#account-name").textContent = state.preview ? "Provider preview" : state.org?.name || "Provider account";
-  $("#account-email").textContent = state.preview ? "Preview workspace" : state.user?.email || "Signed in";
-  $("#account-avatar").textContent = (state.org?.name || "Provider").charAt(0).toUpperCase();
-  $("#snapshot-caption").textContent = state.preview ? "Illustrative opportunities" : "Your workspace, all in one place";
-  $("#org-name").textContent = state.preview ? "Detroit Community Partners" : state.org?.name || "Your organization";
-  $("#org-description").textContent = state.preview ? "A place where Detroit youth discover what’s possible." : state.org?.description || "Add a description to introduce your work to families.";
-  $("#org-type").textContent = state.preview ? "Community provider" : titleCase(state.org?.organization_type || "—");
-  $("#org-contact").textContent = state.preview ? "hello@example.org" : state.org?.contact_email || state.user?.email || "—";
-  $("#org-website").textContent = state.preview ? "example.org" : state.org?.website || "—";
-  const verification = state.preview ? "pending" : state.org?.verification_status;
-  const verified = verification === "verified";
-  $("#org-status-title").textContent = verified ? "Organization verified" : verification === "rejected" ? "Verification needs attention" : "Verification in progress";
-  $("#org-status-copy").textContent = verified ? "Your organization has been verified. Opportunity publication still follows the current backend review rules." : "New organizations can share opportunities while verification is pending. Their submissions go through a quick Admin review.";
-  $("#verification-headline").textContent = verified ? "Your organization is verified" : "Your organization’s status";
-  $("#verification-description").textContent = verified ? "Your organization has completed the current verification process." : "Verification is pending. You can still submit opportunities for Admin review.";
-  $("#recent-list").innerHTML = opportunities.length ? opportunities.slice(0, 3).map((item) => `<article class="recent-item"><span class="recent-icon">${escapeHTML(item.category?.charAt(0) || "O")}</span><div><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.category)} · ${dateLabel(item.created_at)}</small></div><span class="pill ${escapeHTML(item.status)}">${statusLabel(item.status)}</span></article>`).join("") : '<div class="empty-inline">No opportunities yet. Create your first one to get started.</div>';
+  $("#workspace-subtitle").textContent = state.preview ? "Submit opportunities. Follow their review. Keep your profile up to date." : state.org?.name || "Finish your organization profile to get started.";
+  $("#account-name").textContent = state.preview ? "Sample workspace" : state.org?.name || "Organization account";
+  $("#account-email").textContent = state.preview ? "Sign in for your organization" : state.user?.email || "Signed in";
+  $("#account-avatar").textContent = (state.org?.name || "O").charAt(0).toUpperCase();
+  $("#recent-list").innerHTML = opportunities.length ? opportunities.slice(0, 4).map((item) => `<button class="recent-item" type="button" data-detail="${escapeHTML(item.id)}"><div><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.category)} · ${dateLabel(item.created_at)}</small></div>${badge(item)}</button>`).join("") : '<p class="empty-inline">No submissions yet. Start with a program your organization offers.</p>';
+  renderOpportunities(); renderProfile(); updateActions();
+}
+function setFilter(filter) {
+  state.filter = filter;
+  $$(".filter").forEach((button) => { const active = button.dataset.filter === filter; button.classList.toggle("active", active); button.setAttribute("aria-pressed", String(active)); });
   renderOpportunities();
 }
-
 function renderOpportunities() {
   const query = $("#opportunity-search").value.trim().toLowerCase();
-  const items = state.opportunities.filter((item) => {
-    const statusMatch = state.filter === "all" || item.status === state.filter || (state.filter === "draft" && item.status === "draft_ai");
-    return statusMatch && (!query || `${item.title} ${item.category}`.toLowerCase().includes(query));
-  });
-  $("#opportunity-rows").innerHTML = items.map((item) => `<tr><td><span class="row-icon">${escapeHTML(item.category?.charAt(0) || "O")}</span><span class="table-title">${escapeHTML(item.title)}</span></td><td>${escapeHTML(item.category)}</td><td><span class="pill ${escapeHTML(item.status)}">${statusLabel(item.status)}</span></td><td>${dateLabel(item.created_at)}</td><td aria-label="${escapeHTML(item.title)}">↗</td></tr>`).join("");
-  $("#opportunity-empty").hidden = items.length > 0;
-  $(".table-scroll").hidden = items.length === 0;
+  const items = state.opportunities.filter((item) => (state.filter === "all" || approvalStatus(item) === state.filter) && (!query || `${item.title} ${item.category}`.toLowerCase().includes(query)));
+  $("#opportunity-rows").innerHTML = items.map((item) => `<tr><td><button type="button" class="title-button" data-detail="${escapeHTML(item.id)}">${escapeHTML(item.title)}</button></td><td>${escapeHTML(item.category)}</td><td>${badge(item)}</td><td>${dateLabel(item.created_at)}</td><td><button type="button" class="text-button" data-detail="${escapeHTML(item.id)}" aria-label="View ${escapeHTML(item.title)}">View →</button></td></tr>`).join("");
+  $(".table-scroll").hidden = !items.length; $("#opportunity-empty").hidden = !!items.length;
+  const hasRecords = state.opportunities.length > 0;
+  $("#opportunity-empty h2").textContent = hasRecords ? "No matching submissions" : "No submissions yet";
+  $("#opportunity-empty p").textContent = hasRecords ? "Try another status or search term." : "Submit your first opportunity for admin review.";
+  $("#opportunity-empty .create-button").hidden = hasRecords;
 }
-
-async function signOut(showMessage = true) {
-  try { if (state.session) await request("/auth/v1/logout", { method: "POST", refresh: false }); } catch { /* local sign-out still completes */ }
-  saveSession(null);
-  state.user = null;
-  state.org = null;
-  state.preview = true;
-  state.opportunities = sample;
-  $("#account-menu").hidden = true;
-  closeDialog("#setup-dialog");
-  render();
-  if (showMessage) showNotice("You’ve signed out.");
+function openDetail(id) {
+  const item = state.opportunities.find((opportunity) => opportunity.id === id); if (!item) return;
+  $("#detail-title").textContent = item.title; $("#detail-summary").textContent = item.summary || "No description provided.";
+  $("#detail-status").textContent = `${state.preview ? "Sample · " : ""}${statusLabel(item)}`;
+  $("#detail-status").className = `pill ${approvalStatus(item)}`;
+  const range = (min, max) => min == null && max == null ? "Not specified" : `${min ?? "Any"} – ${max ?? "Any"}`;
+  const fields = [ ["Category", item.category], ["Format", item.opportunity_type], ["Submitted", dateLabel(item.created_at)], ["Eligibility", titleCase(item.gender_eligibility || "all")], ["Ages", range(item.age_min,item.age_max)], ["Grades",range(item.grade_min,item.grade_max)], ["Starts",dateLabel(item.starts_at,true)], ["Ends",dateLabel(item.ends_at,true)], ["Application deadline",dateLabel(item.deadline,true)], ["Location",item.location_name], ["Cost",item.is_free ? "Free" : item.cost_cents == null ? "Not provided" : new Intl.NumberFormat("en-US",{ style:"currency",currency:"USD" }).format(item.cost_cents/100)], ["Capacity", item.capacity], ["Transportation",item.transportation], ["Accessibility",item.accessibility], ["Parent requirements",item.parent_requirements], ["Registration link",item.registration_url] ];
+  $("#detail-fields").innerHTML = fields.map(([label,value]) => `<div><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? "Not provided")}</dd></div>`).join("");
+  detailID = item.id; rosterVersion++;
+  updateRequestID = crypto.randomUUID(); $("#update-form").reset(); $("#update-status").textContent = "";
+  showFormError("#update-error", ""); $("#roster-list").replaceChildren(); $("#roster-summary").textContent = "";
+  $("#attendee-tools").hidden = state.preview || item.registration_method !== "in_app";
+  $("#update-form").hidden = !["published", "closed"].includes(item.status);
+  $("#detail-dialog").showModal();
+  if (!$("#attendee-tools").hidden) loadAttendees();
 }
-
+async function signOut() {
+  const session = state.session; state.epoch++;
+  saveSession(null); state.user = null; state.org = null; state.preview = true; state.opportunities = sample; state.profileDirty = false;
+  $("#workspace-error").hidden = true; $("#opportunity-form").reset(); $("#opportunity-form").elements.registration_url.disabled=false; closeDialog("auth-dialog"); closeDialog("opportunity-dialog"); closeDialog("detail-dialog");
+  closeDialog("support-dialog"); $("#support-form").reset(); $("#support-reports").replaceChildren(); reportsVersion++; supportRequestID = crypto.randomUUID();
+  render(); showNotice("You’ve signed out.");
+  if (session) { try { await Opportunity313Auth.request("/auth/v1/logout?scope=local",{method:"POST",session}); } catch { /* Local session is cleared regardless. */ } }
+}
 function openEditor() {
   if (state.preview) { $("#auth-dialog").showModal(); return; }
-  if (!state.org) { $("#setup-dialog").showModal(); return; }
+  if (!state.org) { setView("organization"); showNotice("Create your organization profile before submitting an opportunity."); return; }
   $("#opportunity-dialog").showModal();
 }
-
+function closeDialog(id) { const dialog = document.getElementById(id); if (dialog.open) dialog.close(); }
 function numberOrNull(value) { return value === "" || value == null ? null : Number(value); }
-function dateOrNull(value) { return value ? new Date(value).toISOString() : null; }
+// datetime-local fields are explicitly Detroit time, even on computers in another timezone.
+function dateOrNull(value) {
+  if (!value) return null;
+  const wall = new Date(`${value}:00Z`); if (Number.isNaN(wall.getTime())) throw new Error("Enter a valid date and time.");
+  const formatter = new Intl.DateTimeFormat("sv-SE", { timeZone:"America/Detroit",year:"numeric",month:"2-digit",day:"2-digit",hour:"2-digit",minute:"2-digit",second:"2-digit",hourCycle:"h23" });
+  let candidate = wall.getTime();
+  for (let i=0;i<3;i++) { const parts=Object.fromEntries(formatter.formatToParts(candidate).map(({type,value})=>[type,value])); const displayed=Date.UTC(+parts.year,+parts.month-1,+parts.day,+parts.hour,+parts.minute,+parts.second); candidate += wall.getTime()-displayed; }
+  const parts=Object.fromEntries(formatter.formatToParts(candidate).map(({type,value})=>[type,value]));
+  if (`${parts.year}-${parts.month}-${parts.day}T${parts.hour}:${parts.minute}` !== value) throw new Error("That Detroit time does not exist because of daylight saving time. Choose another time.");
+  return new Date(candidate).toISOString();
+}
 
 $$("[data-view]").forEach((button) => button.addEventListener("click", () => setView(button.dataset.view)));
 $$(".create-button").forEach((button) => button.addEventListener("click", openEditor));
-$("#preview-signin").addEventListener("click", () => $("#auth-dialog").showModal());
-$("#topbar-help").addEventListener("click", () => setView("verification"));
-$("#account-button").addEventListener("click", () => { if (state.preview) $("#auth-dialog").showModal(); else $("#account-menu").hidden = !$("#account-menu").hidden; });
-$("#mobile-account").addEventListener("click", () => { if (state.preview) $("#auth-dialog").showModal(); else signOut(); });
-$("#sign-out").addEventListener("click", () => signOut());
-$("#setup-signout").addEventListener("click", () => signOut());
+$$("[data-status]").forEach((button) => button.addEventListener("click", () => { setFilter(button.dataset.status); setView("opportunities"); }));
+$$(".filter").forEach((button) => button.addEventListener("click", () => setFilter(button.dataset.filter)));
 $("#opportunity-search").addEventListener("input", renderOpportunities);
-$$(".filter").forEach((button) => button.addEventListener("click", () => { state.filter = button.dataset.filter; $$(".filter").forEach((filter) => filter.classList.toggle("active", filter === button)); renderOpportunities(); }));
-
-function setAuthMode(mode) {
-  state.authMode = mode;
-  $("#tab-signin").classList.toggle("active", mode === "signin");
-  $("#tab-signup").classList.toggle("active", mode === "signup");
-  $("#auth-title").textContent = mode === "signin" ? "Sign in to Opportunity313." : "Create your provider account.";
-  $("#auth-subtitle").textContent = mode === "signin" ? "Use your provider account to manage your organization’s opportunities." : "Start with your work email. You’ll add organization details next.";
-  $("#auth-submit").innerHTML = mode === "signin" ? 'Sign in <span aria-hidden="true">→</span>' : 'Create account <span aria-hidden="true">→</span>';
-  $("#auth-submit").dataset.label = $("#auth-submit").innerHTML;
-  $("#auth-form [name=password]").autocomplete = mode === "signin" ? "current-password" : "new-password";
-  showFormError("#auth-error", "");
-}
-$("#tab-signin").addEventListener("click", () => setAuthMode("signin"));
-$("#tab-signup").addEventListener("click", () => setAuthMode("signup"));
+$("#workspace").addEventListener("click", (event) => { const button=event.target.closest("[data-detail]"); if (button) openDetail(button.dataset.detail); });
+$("#account-action").addEventListener("click", () => state.session ? signOut() : $("#auth-dialog").showModal());
+$("#preview-signin").addEventListener("click", () => $("#auth-dialog").showModal());
+$("#refresh-workspace").addEventListener("click", reloadWorkspace); $("#retry-workspace").addEventListener("click", reloadWorkspace);
+$$("[data-close]").forEach((button) => button.addEventListener("click", () => closeDialog(button.dataset.close)));
+$$("dialog").forEach((dialog) => dialog.addEventListener("cancel", (event) => { if (state.busy) event.preventDefault(); }));
+$("#profile-form").addEventListener("input", () => { state.profileDirty = true; });
+$("#profile-reset").addEventListener("click", () => { state.profileDirty = false; showFormError("#profile-error", ""); renderProfile(); });
 
 $("#auth-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  showFormError("#auth-error", "");
-  setBusy(form, true);
+  event.preventDefault(); const form=event.currentTarget; if (state.busy) return;
+  const fields=new FormData(form); const email=String(fields.get("email")).trim(); const password=String(fields.get("password"));
+  showFormError("#auth-error",""); setBusy(form,true);
   try {
-    const fields = new FormData(form);
-    const email = String(fields.get("email")).trim();
-    const password = String(fields.get("password"));
-    const endpoint = state.authMode === "signin" ? "/auth/v1/token?grant_type=password" : "/auth/v1/signup";
-    const result = await request(endpoint, { method: "POST", body: { email, password }, auth: false });
-    if (!result.access_token) {
-      closeDialog("#auth-dialog");
-      showNotice("Check your email for a confirmation link, then return and sign in.");
-      return;
-    }
-    saveSession({ ...result, expires_at: Math.floor(Date.now() / 1000) + result.expires_in });
-    await loadProvider();
-    closeDialog("#auth-dialog");
-    form.reset();
-    showNotice(state.org ? `Welcome to ${state.org.name}.` : "Account ready. Add your organization to continue.");
-  } catch (error) { showFormError("#auth-error", error.message); }
-  finally { setBusy(form, false); }
+    const result=await request("/auth/v1/token?grant_type=password",{method:"POST",body:{email,password},auth:false});
+    if (!result.access_token) throw new Error("Sign-in could not be completed. Please try again.");
+    state.epoch++; state.profileDirty=false; saveSession({...result,expires_at:Math.floor(Date.now()/1000)+result.expires_in});
+    state.preview=false; state.opportunities=[];
+    try { await loadProvider(); }
+    catch (error) { await signOut(); $("#auth-dialog").showModal(); throw error; }
+    closeDialog("auth-dialog"); form.reset(); $("#notice").hidden=!!state.org; $("#confirmation-message").hidden=true; $("#resend-confirmation").hidden=true;
+  } catch(error) { showFormError("#auth-error",error.message); if(error.code==="email_not_confirmed"){state.confirmationEmail=email;$("#resend-confirmation").hidden=false;$("#confirmation-message").hidden=false;$("#confirmation-message").textContent="Confirm your email, then return here to sign in.";} }
+  finally { setBusy(form,false); }
+});
+$("#resend-confirmation").addEventListener("click",async (event)=>{
+  const button=event.currentTarget; button.disabled=true;
+  try { await request("/auth/v1/resend",{method:"POST",auth:false,body:{type:"signup",email:state.confirmationEmail}}); $("#confirmation-message").textContent="Confirmation email requested. Check your inbox and spam folder."; }
+  catch(error){showFormError("#auth-error",error.message);} finally{button.disabled=false;}
+});
+$("#profile-form").addEventListener("submit",async(event)=>{
+  event.preventDefault(); const form=event.currentTarget; if(state.busy || state.preview || !state.user)return;
+  const fields=new FormData(form); const profile=Object.fromEntries(profileKeys.map((key)=>[key,String(fields.get(key)||"").trim()]));
+  if(profile.website && (!/^https?:\/\//i.test(profile.website) || /\s/.test(profile.website))){showFormError("#profile-error","Enter a website starting with https:// or http://.");return;}
+  showFormError("#profile-error","");setBusy(form,true);
+  try {
+    const saved=await request("/rest/v1/rpc/save_organization_profile",{method:"POST",body:{target_organization_id:state.org?.id||null,profile}});
+    const organization=Array.isArray(saved)?saved[0]:saved;
+    if(!organization?.id)throw new Error("The save response could not be read. Refresh the workspace before trying again.");
+    state.org=organization;
+    state.profileDirty=false; render(); showNotice("Organization profile saved.");
+  }catch(error){showFormError("#profile-error",error.message);}finally{setBusy(form,false);renderProfile();}
+});
+$("#opportunity-form").addEventListener("submit",async(event)=>{
+  event.preventDefault(); const form=event.currentTarget; if(state.busy || !state.org || state.preview)return;
+  const fields=new FormData(form); showFormError("#opportunity-error","");
+  try {
+    const ageMin=numberOrNull(fields.get("age_min")),ageMax=numberOrNull(fields.get("age_max")),gradeMin=numberOrNull(fields.get("grade_min")),gradeMax=numberOrNull(fields.get("grade_max"));
+    const startsAt=dateOrNull(fields.get("starts_at")),endsAt=dateOrNull(fields.get("ends_at")),deadline=dateOrNull(fields.get("deadline"));
+    if(ageMin!==null && ageMax!==null && ageMin>ageMax)throw new Error("Minimum age must be less than or equal to maximum age.");
+    if(gradeMin!==null && gradeMax!==null && gradeMin>gradeMax)throw new Error("Minimum grade must be less than or equal to maximum grade.");
+    if(endsAt && endsAt<startsAt)throw new Error("End time must be after the start time.");
+    const payload={organization_id:state.org.id,title:String(fields.get("title")).trim(),summary:String(fields.get("summary")).trim(),category:fields.get("category"),opportunity_type:fields.get("opportunity_type"),age_min:ageMin,age_max:ageMax,grade_min:gradeMin,grade_max:gradeMax,gender_eligibility:fields.get("gender_eligibility"),starts_at:startsAt,ends_at:endsAt,deadline,cost_cents:Math.round(Number(fields.get("cost")||0)*100),is_free:Number(fields.get("cost")||0)===0,location_name:String(fields.get("location_name")).trim(),neighborhood:String(fields.get("neighborhood")||"").trim()||null,transportation:String(fields.get("transportation")||"").trim()||null,meals_provided:fields.has("meals_provided"),accessibility:String(fields.get("accessibility")||"").trim()||null,parent_requirements:String(fields.get("parent_requirements")||"").trim()||null,registration_method:fields.has("in_app") ? "in_app" : "provider_submission",registration_url:fields.has("in_app") ? null : String(fields.get("registration_url")||"").trim()||null,capacity:numberOrNull(fields.get("capacity")),status:"pending_review",created_by:state.user.id};
+    if(fields.has("in_app") && !payload.is_free)throw new Error("In-app registrations are available for free opportunities. Use your provider link for paid registrations.");
+    if(!payload.title || !payload.summary || !payload.location_name)throw new Error("Enter a title, description, and location before submitting.");
+    if(payload.registration_url && !/^https?:\/\//i.test(payload.registration_url))throw new Error("Use an http or https registration link.");
+    setBusy(form,true);
+    await request("/rest/v1/opportunities",{method:"POST",body:payload});
+    closeDialog("opportunity-dialog");form.reset();form.elements.registration_url.disabled=false;$("#opportunity-search").value="";setFilter("all");setView("opportunities");showNotice("Opportunity submitted. It is pending admin review.");
+    try{state.opportunities=await fetchOpportunities();render();}catch(error){$("#workspace-error-message").textContent=`Your submission was saved, but the list could not refresh. ${error.message}`;$("#workspace-error").hidden=false;}
+  }catch(error){showFormError("#opportunity-error",error.message);}finally{setBusy(form,false);}
 });
 
-$("#setup-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  showFormError("#setup-error", "");
-  setBusy(form, true);
-  try {
-    const fields = new FormData(form);
-    await request("/rest/v1/rpc/register_provider_organization", { method: "POST", body: { organization_name: String(fields.get("organization_name")).trim(), requested_type: fields.get("requested_type"), organization_description: String(fields.get("organization_description")).trim() || null } });
-    closeDialog("#setup-dialog");
-    await loadProvider();
-    showNotice("Your organization is ready. Verification is pending; opportunities can be sent for review.");
-  } catch (error) { showFormError("#setup-error", error.message); }
-  finally { setBusy(form, false); }
-});
-
-$("#opportunity-form").addEventListener("submit", async (event) => {
-  event.preventDefault();
-  const form = event.currentTarget;
-  showFormError("#opportunity-error", "");
-  const fields = new FormData(form);
-  const ageMin = numberOrNull(fields.get("age_min"));
-  const ageMax = numberOrNull(fields.get("age_max"));
-  const gradeMin = numberOrNull(fields.get("grade_min"));
-  const gradeMax = numberOrNull(fields.get("grade_max"));
-  const startsAt = dateOrNull(fields.get("starts_at"));
-  const endsAt = dateOrNull(fields.get("ends_at"));
-  const deadline = dateOrNull(fields.get("deadline"));
-  if (ageMin !== null && ageMax !== null && ageMin > ageMax) { showFormError("#opportunity-error", "Minimum age must be less than or equal to maximum age."); return; }
-  if (gradeMin !== null && gradeMax !== null && gradeMin > gradeMax) { showFormError("#opportunity-error", "Minimum grade must be less than or equal to maximum grade."); return; }
-  if (endsAt && endsAt < startsAt) { showFormError("#opportunity-error", "End date must be after the start date."); return; }
-  setBusy(form, true);
-  try {
-    const payload = { organization_id: state.org.id, title: String(fields.get("title")).trim(), summary: String(fields.get("summary")).trim(), category: fields.get("category"), opportunity_type: fields.get("opportunity_type"), age_min: ageMin, age_max: ageMax, grade_min: gradeMin, grade_max: gradeMax, gender_eligibility: fields.get("gender_eligibility"), starts_at: startsAt, ends_at: endsAt, deadline, cost_cents: Math.round(Number(fields.get("cost") || 0) * 100), is_free: Number(fields.get("cost") || 0) === 0, location_name: String(fields.get("location_name")).trim(), neighborhood: String(fields.get("neighborhood") || "").trim() || null, transportation: String(fields.get("transportation") || "").trim() || null, meals_provided: fields.has("meals_provided"), accessibility: String(fields.get("accessibility") || "").trim() || null, parent_requirements: String(fields.get("parent_requirements") || "").trim() || null, registration_method: "provider_submission", registration_url: String(fields.get("registration_url") || "").trim() || null, capacity: numberOrNull(fields.get("capacity")), status: "pending_review", created_by: state.user.id };
-    await request("/rest/v1/opportunities", { method: "POST", body: payload });
-    state.opportunities = await request(`/rest/v1/opportunities?select=id,title,category,status,created_at,summary&organization_id=eq.${encodeURIComponent(state.org.id)}&order=created_at.desc&limit=100`);
-    closeDialog("#opportunity-dialog");
-    form.reset();
-    render();
-    setView("opportunities");
-    showNotice("Opportunity submitted for review.");
-  } catch (error) { showFormError("#opportunity-error", error.message); }
-  finally { setBusy(form, false); }
-});
-
-render();
+setView(location.hash.slice(1));render();
 try {
-  const saved = JSON.parse(sessionStorage.getItem(SESSION_KEY) || "null");
-  if (saved?.refresh_token) { saveSession(saved); loadProvider().catch(async (error) => { await signOut(false); showNotice(`Session ended: ${error.message}`, true); }); }
-} catch { sessionStorage.removeItem(SESSION_KEY); }
+  const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
+  if(saved?.refresh_token){saveSession(saved);state.preview=false;state.opportunities=[];render();loadProvider().catch((error)=>{ $("#workspace-error-message").textContent=`Unable to restore the workspace: ${error.message} You can retry or sign out.`;$("#workspace-error").hidden=false; });}
+}catch{saveSession(null);}
+
+async function loadAttendees() {
+  if (!detailID || state.preview) return;
+  const id = detailID, epoch = state.epoch, version = ++rosterVersion;
+  $("#roster-summary").textContent = "Loading attendees…";
+  try {
+    const roster = await request("/rest/v1/rpc/native_opportunity_attendees", {method:"POST",body:{opportunity_id_input:id}});
+    if (id !== detailID || epoch !== state.epoch || version !== rosterVersion) return;
+    $("#roster-summary").textContent = `${roster.registered_count} registered · ${roster.attended_count} attended · ${roster.cancelled_count} cancelled${roster.remaining == null ? "" : ` · ${roster.remaining} spots remaining`}`;
+    $("#roster-list").innerHTML = roster.attendees.length ? roster.attendees.map(a => `<article class="form-section"><strong>${escapeHTML(a.attendee_name)}</strong><p>${escapeHTML(a.status === "used" ? "Attended" : titleCase(a.status))}</p>${a.status === "upcoming" ? `<button type="button" class="text-button" data-attend="${escapeHTML(a.id)}">Mark attended</button>` : ""}</article>`).join("") : "<p>No registrations yet.</p>";
+  } catch(error) { if(id === detailID && epoch === state.epoch && version === rosterVersion) $("#roster-summary").textContent = error.message; }
+}
+$("#load-attendees").addEventListener("click", loadAttendees);
+$("#roster-list").addEventListener("click",async event => {
+  const button = event.target.closest("[data-attend]");
+  if (!button || state.busy || !window.confirm("Record this attendee as attended?")) return;
+  button.disabled = true;
+  try { await request("/rest/v1/rpc/native_mark_opportunity_attendance",{method:"POST",body:{registration_id_input:button.dataset.attend}}); await loadAttendees(); }
+  catch(error) { $("#roster-summary").textContent = error.message; button.disabled = false; }
+});
+$("#update-form").addEventListener("submit",async event => {
+  event.preventDefault(); const form = event.currentTarget;
+  if (state.busy || state.preview || !detailID) return;
+  const fields = new FormData(form);
+  const title = String(fields.get("title")).trim(), body = String(fields.get("body")).trim();
+  if (!title || !body) return;
+  if (!window.confirm("Send this update to registered attendees and their linked parents?")) return;
+  setBusy(form,true); showFormError("#update-error","");
+  try {
+    const count = await request("/rest/v1/rpc/native_publish_opportunity_update",{method:"POST",body:{opportunity_id_input:detailID,title_input:title,body_input:body,request_id_input:updateRequestID}});
+    $("#update-status").textContent = `Update delivered to ${count} registered attendee and parent accounts.`;
+    form.reset(); updateRequestID = crypto.randomUUID();
+  } catch(error) { showFormError("#update-error",error.message); }
+  finally { setBusy(form,false); }
+});
+$("#update-form").addEventListener("input", () => { updateRequestID = crypto.randomUUID(); });
+$("#opportunity-form").elements.in_app.addEventListener("change", event => {
+  const link = $("#opportunity-form").elements.registration_url;
+  link.disabled = event.target.checked;
+});
+
+async function loadIssueReports() {
+  if (!state.user || state.preview) return;
+  const epoch = state.epoch, version = ++reportsVersion;
+  $("#reports-status").textContent = "Loading reports…";
+  try {
+    const reports = await request(`/rest/v1/issue_reports?select=*&reporter_id=eq.${encodeURIComponent(state.user.id)}&order=created_at.desc&limit=200`);
+    if(epoch !== state.epoch || version !== reportsVersion) return;
+    $("#reports-status").textContent = reports.length ? (reports.length === 200 ? "Showing your latest 200 reports." : "") : "You haven’t submitted any reports yet.";
+    $("#support-reports").innerHTML = reports.map(r => `<article><h4>${escapeHTML(r.title)}</h4><p>ISS-${escapeHTML(r.id.slice(0,8).toUpperCase())} · ${escapeHTML(titleCase(r.status))} · ${escapeHTML(dateLabel(r.created_at,true))}</p>${r.opportunity_name ? `<p>${escapeHTML(r.opportunity_name)}</p>` : ""}<p class="report-text">${escapeHTML(r.details)}</p>${r.response ? `<strong>Response from Opportunity313</strong><p class="report-text">${escapeHTML(r.response)}</p>` : ""}</article>`).join("");
+  } catch(error) { if(epoch === state.epoch && version === reportsVersion) $("#reports-status").textContent = error.message; }
+}
+$("#report-issue").addEventListener("click", () => {
+  if(state.preview || !state.user) { $("#auth-dialog").showModal(); return; }
+  const previousOpportunity = $("#support-opportunity").value;
+  $("#support-opportunity").innerHTML = '<option value="">General issue</option>' + state.opportunities.map(o => `<option value="${escapeHTML(o.id)}">${escapeHTML(o.title)}</option>`).join("");
+  if(state.opportunities.some(o => o.id === previousOpportunity)) $("#support-opportunity").value = previousOpportunity;
+  $("#support-dialog").showModal(); loadIssueReports();
+});
+$("#refresh-reports").addEventListener("click",loadIssueReports);
+$("#support-form").addEventListener("input", () => { supportRequestID = crypto.randomUUID(); $("#support-status").textContent = ""; });
+$("#support-form").addEventListener("submit",async event => {
+  event.preventDefault(); const form=event.currentTarget;
+  if(state.busy || state.preview || !state.user) return;
+  const fields=new FormData(form),title=String(fields.get("title")).trim(),details=String(fields.get("details")).trim();
+  showFormError("#support-error","");
+  if(title.length<3 || title.length>120 || details.length<10 || details.length>4000) { showFormError("#support-error","Enter a title of 3–120 characters and a description of 10–4,000 characters."); return; }
+  setBusy(form,true);
+  try {
+    const report=await request("/rest/v1/rpc/native_submit_issue_report",{method:"POST",body:{request_id_input:supportRequestID,category_input:fields.get("category"),title_input:title,details_input:details,platform_input:"web",opportunity_id_input:fields.get("opportunity_id")||null,app_version_input:null}});
+    $("#support-status").textContent = `Report submitted: ISS-${report.id.slice(0,8).toUpperCase()}. Check My reports for the team’s response.`;
+    form.reset(); supportRequestID=crypto.randomUUID(); await loadIssueReports();
+  } catch(error) { showFormError("#support-error",error.message); }
+  finally { setBusy(form,false); }
+});

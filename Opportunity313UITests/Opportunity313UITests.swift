@@ -8,8 +8,8 @@ final class Opportunity313UITests: XCTestCase {
         let app = XCUIApplication()
         app.launch()
         let resolved = NSPredicate { _, _ in
-            app.buttons["Sign In"].exists || app.tabBars.firstMatch.exists ||
-            app.staticTexts["Choose Your Role"].exists ||
+            app.buttons["Sign in"].exists || app.tabBars.firstMatch.exists ||
+            app.staticTexts["How will you use Opportunity313?"].exists ||
             app.staticTexts["Unable to Load Account"].exists
         }
         expectation(for: resolved, evaluatedWith: nil)
@@ -21,7 +21,7 @@ final class Opportunity313UITests: XCTestCase {
     func testExistingSessionCanSignOutAndOpenSignup() throws {
         let app = XCUIApplication()
         app.launch()
-        if !app.buttons["Sign In"].waitForExistence(timeout: 5) {
+        if !app.buttons["Sign in"].waitForExistence(timeout: 5) {
             let tabs = app.tabBars.firstMatch
             XCTAssertTrue(tabs.waitForExistence(timeout: 30))
             let account = tabs.buttons["Account"]
@@ -31,11 +31,11 @@ final class Opportunity313UITests: XCTestCase {
             XCTAssertTrue(signOut.waitForExistence(timeout: 5))
             signOut.tap()
         }
-        XCTAssertTrue(app.buttons["Sign In"].waitForExistence(timeout: 15))
-        XCTAssertFalse(app.buttons["Sign In"].isEnabled)
-        app.buttons["Create an Account"].tap()
-        XCTAssertTrue(app.staticTexts["Create Your Account"].waitForExistence(timeout: 5))
-        XCTAssertFalse(app.buttons["Create Account"].isEnabled)
+        XCTAssertTrue(app.buttons["Sign in"].waitForExistence(timeout: 15))
+        XCTAssertFalse(app.buttons["Sign in"].isEnabled)
+        app.buttons["createParentAccount"].tap()
+        XCTAssertTrue(app.staticTexts["signupHeading"].waitForExistence(timeout: 5))
+        XCTAssertFalse(app.buttons["submitSignup"].isEnabled)
     }
     // Credentials belong in an ignored local scheme, never in this file.
     // This test browses existing data. Write paths use rollback SQL checks.
@@ -53,7 +53,7 @@ final class Opportunity313UITests: XCTestCase {
             return true
         }
         app.launch()
-        if !app.buttons["Sign In"].waitForExistence(timeout: 5) {
+        if !app.buttons["Sign in"].waitForExistence(timeout: 5) {
             let tabs = app.tabBars.firstMatch
             XCTAssertTrue(tabs.waitForExistence(timeout: 30))
             let account = tabs.buttons["Account"]
@@ -66,12 +66,12 @@ final class Opportunity313UITests: XCTestCase {
                 XCTFail("Missing local demo account for " + role)
                 return
             }
-            XCTAssertTrue(app.buttons["Sign In"].waitForExistence(timeout: 30))
+            XCTAssertTrue(app.buttons["Sign in"].waitForExistence(timeout: 30))
             app.textFields["Email"].tap()
             app.textFields["Email"].typeText(email)
             app.secureTextFields["Password"].tap()
             app.secureTextFields["Password"].typeText(password)
-            app.buttons["Sign In"].tap()
+            app.buttons["Sign in"].tap()
             XCTAssertTrue(app.tabBars.firstMatch.waitForExistence(timeout: 30), role + " did not reach its dashboard")
             let passwordPrompt = XCUIApplication(bundleIdentifier: "com.apple.springboard").buttons["Not Now"]
             if passwordPrompt.waitForExistence(timeout: 5) { passwordPrompt.tap() }
@@ -162,7 +162,7 @@ final class Opportunity313UITests: XCTestCase {
             }
             XCTAssertTrue(app.buttons["Sign Out"].waitForExistence(timeout: 10))
             app.buttons["Sign Out"].tap()
-            XCTAssertTrue(app.buttons["Sign In"].waitForExistence(timeout: 15))
+            XCTAssertTrue(app.buttons["Sign in"].waitForExistence(timeout: 15))
         }
     }
 

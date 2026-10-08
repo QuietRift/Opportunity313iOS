@@ -307,11 +307,12 @@ struct TicketDetailView: View {
     }
 }
 
-private struct TicketQRCode: View {
+struct TicketQRCode: View {
     let token: String
+    var prefix: String = TicketCode.prefix
     private var qrImage: CGImage? {
         let filter = CIFilter.qrCodeGenerator()
-        filter.message = Data((TicketCode.prefix + token).utf8)
+        filter.message = Data((prefix + token).utf8)
         guard let output = filter.outputImage else { return nil }
         return CIContext().createCGImage(output, from: output.extent)
     }

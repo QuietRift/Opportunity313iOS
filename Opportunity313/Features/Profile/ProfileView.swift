@@ -270,7 +270,7 @@ struct ProfileView: View {
             Text("Appearance")
                 .font(.title2.bold())
 
-            Text("Choose the Opportunity313 colorway you want to use. This setting stays independent from your phone.")
+            Text("Applies only to this app.")
                 .font(.subheadline)
                 .foregroundStyle(.secondary)
 
@@ -301,7 +301,10 @@ struct ProfileView: View {
         VStack(spacing: 14) {
 
             Divider()
-
+            NavigationLink { ProfileSettingsView() } label: {
+                Label("Account Settings", systemImage: "gearshape")
+                    .frame(maxWidth: .infinity, alignment: .leading).padding()
+            }
             Button(role: .destructive) {
 
                 Task {

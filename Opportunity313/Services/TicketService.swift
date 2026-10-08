@@ -93,6 +93,7 @@ final class TicketService: ObservableObject {
             hold = nil
             notice = issued.isEmpty ? "Already confirmed. Your tickets are in My Tickets." : "\(issued.count) ticket\(issued.count == 1 ? "" : "s") confirmed."
             if !stored { notice = "Confirmed. Open My Tickets to generate an entry code on this device." }
+            NotificationCenter.default.post(name: .opportunityTicketsDidChange, object: nil)
             return true
         } catch {
             guard user == client.auth.currentUser?.id else { return false }
@@ -154,6 +155,7 @@ final class TicketService: ObservableObject {
             guard user == client.auth.currentUser?.id else { return }
             TicketTokenStore.remove(userID: user, ticketID: ticketID)
             await loadTickets()
+            NotificationCenter.default.post(name: .opportunityTicketsDidChange, object: nil)
         } catch {
             if user == client.auth.currentUser?.id { errorMessage = error.localizedDescription }
         }
@@ -204,6 +206,26 @@ enum TicketTokenStore {
         guard SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
               let data = result as? Data else { return nil }
         return String(data: data, encoding: .utf8)
+    }
+    static func removeAll(userID: UUID) {
+        let request: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+            kSecAttrService as String: "Opportunity313.EventTickets",
+            kSecReturnAttributes as String: true, kSecMatchLimit as String: kSecMatchLimitAll]
+        var result: CFTypeRef?
+        if SecItemCopyMatching(request as CFDictionary, &result) == errSecSuccess,
+           let items = result as? [[String: Any]] {
+            for item in items {
+                guard let account = item[kSecAttrAccount as String] as? String,
+                      account.hasPrefix("\(userID).") else { continue }
+                let deletion: [String: Any] = [kSecClass as String: kSecClassGenericPassword,
+                    kSecAttrService as String: "Opportunity313.EventTickets", kSecAttrAccount as String: account]
+                SecItemDelete(deletion as CFDictionary)
+            }
+        }
+        for key in UserDefaults.standard.dictionaryRepresentation().keys
+            where key.hasPrefix("opportunity313.ticketHold.\(userID).") {
+            UserDefaults.standard.removeObject(forKey: key)
+        }
     }
     static func remove(userID: UUID, ticketID: UUID) { SecItemDelete(query(userID: userID, ticketID: ticketID) as CFDictionary) }
 }

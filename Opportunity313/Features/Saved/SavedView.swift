@@ -41,7 +41,7 @@ struct SavedView: View {
                         "Nothing Saved Yet",
                         systemImage: "bookmark",
                         description: Text(
-                            "Save opportunities you're interested in and they'll appear here."
+                            "Save opportunities to find them here."
                         )
                     )
 

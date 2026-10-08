@@ -17,6 +17,9 @@ struct AddChildView: View {
     @ObservedObject var childService:
         ParentManagedYouthService
 
+    @StateObject private var accessService = ChildAccessService()
+    @State private var createdChildID: UUID?
+
     @State private var firstName = ""
     @State private var ageBand = ""
     @State private var grade: Int?
@@ -63,7 +66,9 @@ struct AddChildView: View {
 
         NavigationStack {
 
-            Form {
+            Group {
+            if let createdChildID { childCreatedContent(childID: createdChildID) }
+            else { Form {
 
                 Section("Child Information") {
 
@@ -217,12 +222,14 @@ struct AddChildView: View {
                     }
                 }
             }
+            }
+            }
             .scrollContentBackground(.hidden)
             .background(
                 Opportunity313Brand.canvas(for: colorScheme)
                     .ignoresSafeArea()
             )
-            .navigationTitle("Add Child")
+            .navigationTitle(createdChildID == nil ? "Add Child" : "Child Added")
             .navigationBarTitleDisplayMode(
                 .inline
             )
@@ -233,9 +240,10 @@ struct AddChildView: View {
                         .cancellationAction
                 ) {
 
-                    Button("Cancel") {
+                    Button(createdChildID == nil ? "Cancel" : "Done") {
                         dismiss()
                     }
+                    .disabled(childService.isLoading || accessService.isLoading)
                 }
 
                 ToolbarItem(
@@ -243,7 +251,7 @@ struct AddChildView: View {
                         .confirmationAction
                 ) {
 
-                    Button("Add") {
+                    if createdChildID == nil { Button("Add") {
 
                         Task {
                             await addChild()
@@ -251,14 +259,50 @@ struct AddChildView: View {
                     }
                     .disabled(
                         !formIsValid ||
-                        childService.isLoading
+                        childService.isLoading || accessService.isLoading
                     )
+                    }
                 }
             }
         }
         .opportunity313PageBackground()
+        .interactiveDismissDisabled(childService.isLoading || accessService.isLoading)
     }
 
+
+    private func childCreatedContent(childID: UUID) -> some View {
+        ScrollView {
+            VStack(alignment: .leading, spacing: 24) {
+                Label("\(firstName.trimmingCharacters(in: .whitespacesAndNewlines))’s profile is saved", systemImage: "checkmark.circle.fill")
+                    .font(.title2.bold())
+                Text("Use this private code to sign in from the Under 18 access-code option. The child does not need an email address or a separate signup.")
+                if accessService.isLoading {
+                    ProgressView("Creating the child’s access code…")
+                } else if let code = accessService.generatedCode {
+                    Text(code).font(.system(.title2, design: .monospaced).bold())
+                        .textSelection(.enabled).accessibilityIdentifier("newChildAccessCode")
+                        .frame(maxWidth: .infinity).padding()
+                        .background(Opportunity313Brand.surface(for: colorScheme), in: RoundedRectangle(cornerRadius: 14))
+                    if let expiration = accessService.expiresAt {
+                        Text("Valid until \(expiration.formatted(date: .abbreviated, time: .omitted))")
+                            .font(.subheadline).foregroundStyle(.secondary)
+                    }
+                    ShareLink(item: code) { Label("Share access code", systemImage: "square.and.arrow.up") }
+                        .buttonStyle(.borderedProminent)
+                    Text("Save or share this code now. It is shown only here; you can replace or revoke it later from the child’s profile.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                } else {
+                    Text("The child’s profile was saved, but the access code could not be created.")
+                    if let error = accessService.errorMessage { Text(error).foregroundStyle(.red) }
+                    Button("Retry access code") {
+                        Task { await accessService.generate(for: childID) }
+                    }.buttonStyle(.borderedProminent)
+                    Text("Retry creates a code for this saved profile. You do not need to add the child again.")
+                        .font(.subheadline).foregroundStyle(.secondary)
+                }
+            }.padding(24).frame(maxWidth: 560, alignment: .leading).frame(maxWidth: .infinity)
+        }
+    }
 
     // MARK: - Toggle Interest
 
@@ -299,7 +343,7 @@ struct AddChildView: View {
 
         do {
 
-            try await childService
+            let childID = try await childService
                 .createChild(
                     firstName: firstName,
                     ageBand: ageBand,
@@ -316,7 +360,8 @@ struct AddChildView: View {
                         relationship
                 )
 
-            dismiss()
+            createdChildID = childID
+            await accessService.generate(for: childID)
 
         } catch {
             // Error displayed by service.

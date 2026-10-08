@@ -71,9 +71,9 @@ struct RoleSelectionView: View {
                         }
 
                         RoleCard(
-                            title: "I'm an Opportunity Provider",
+                            title: "I represent an Organization",
                             description:
-                                "Share programs and opportunities with Detroit youth.",
+                                "Create an organization profile and submit opportunities for admin approval.",
                             icon: "building.2.fill",
                             selected: selectedRole == "provider"
                         ) {
@@ -143,6 +143,12 @@ struct RoleSelectionView: View {
                         selectedRole == nil ||
                         onboardingService.isLoading
                     )
+
+                    Button("Use a different account") {
+                        Task { await authService.switchAccount() }
+                    }
+                    .frame(maxWidth: .infinity)
+                    .padding(.vertical, 8)
                 }
                 .padding()
             }

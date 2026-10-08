@@ -34,7 +34,7 @@ struct AccountView: View {
                         youthProfiles
                         NavigationLink {
                             FamilySavedProfileView(children: children)
-                        } label: { row("Saved Opportunities", icon: "bookmark", subtitle: "Your family's saved programs") }
+                        } label: { row("Saved Opportunities", icon: "bookmark") }
                         NavigationLink {
                             MyTicketsView()
                         } label: { row("My Activity", icon: "list.bullet.rectangle", subtitle: "Confirmed event tickets") }
@@ -43,8 +43,9 @@ struct AccountView: View {
                         NavigationLink { TicketEventsView(managedOnly: true) } label: { row("Event Check-In", icon: "qrcode.viewfinder") }
                     }
                     NavigationLink {
-                        ProfileMessageView(title: "Notifications", icon: "bell", message: "There are no in-app notifications available yet. Check your calendar for saved opportunity dates and deadlines.")
+                        OpportunityAlertsView()
                     } label: { row("Notifications", icon: "bell") }
+                    NavigationLink { ReportIssueView() } label: { row("Report an Issue", icon: "exclamationmark.bubble", subtitle: "Tell the Opportunity313 team what went wrong") }
                     NavigationLink { ProfileHelpView() } label: { row("Help & Support", icon: "questionmark.circle") }
                     NavigationLink { ProfileSettingsView() } label: { row("Account Settings", icon: "gearshape") }
                     if let error = authService.errorMessage {
@@ -134,7 +135,7 @@ struct AccountView: View {
     private var displayRole: String {
         switch authService.role {
         case "parent": "Parent / Guardian"
-        case "provider": "Provider"
+        case "provider": "Organization"
         case "athletics": "Athletics"
         case "admin": "Administrator"
         default: "User"
@@ -183,11 +184,20 @@ struct ProfileSettingsView: View {
     @AppStorage("opportunity313.colorway") private var colorway = AppColorway.light.rawValue
     var body: some View {
         Form {
-            Section("Account") { LabeledContent("Email", value: authService.email) }
+            Section("Account") { LabeledContent("Sign-In", value: authService.email.hasSuffix("@access.opportunity313.invalid") ? "Parent-managed access code" : authService.email) }
+            Section("Email Notifications") {
+                NavigationLink("Email Preferences") { EmailPreferencesView() }.accessibilityIdentifier("emailPreferencesLink")
+            }
             Section("Appearance") {
                 Picker("Colorway", selection: $colorway) {
                     ForEach(AppColorway.allCases) { Text($0.title).tag($0.rawValue) }
                 }.pickerStyle(.segmented)
+            }
+            Section {
+                NavigationLink("Delete My Account") { AccountDeletionView() }.accessibilityIdentifier("accountDeletionLink")
+                    .foregroundStyle(.red)
+            } footer: {
+                Text("Permanent account deletion is separate from revoking a child’s sign-in access.")
             }
             Section("Youth Privacy") {
                 Text("Youth profiles use age groups instead of birth dates. School and transportation details are not collected. Accessibility preferences are optional.")
@@ -210,6 +220,10 @@ struct ProfileMessageView: View {
 struct ProfileHelpView: View {
     var body: some View {
         List {
+            Section("Report a Problem") {
+                NavigationLink { ReportIssueView() } label: { Label("Report an Issue", systemImage: "exclamationmark.bubble") }
+                NavigationLink { IssueReportsView() } label: { Label("My Reports", systemImage: "text.bubble") }
+            }
             Section("Managing Youth Profiles") {
                 Text("Use Add Youth Profile to create a managed profile. Tap a youth's card to review their details, edit interests, or manage their access code.")
             }

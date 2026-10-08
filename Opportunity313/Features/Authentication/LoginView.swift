@@ -4,7 +4,8 @@ struct LoginView: View {
     @EnvironmentObject var authService: AuthService
     @State private var email = ""
     @State private var password = ""
-    @State private var showSignUp = false
+    @State private var signupAccountType: SignupAccountType?
+    @State private var showPasswordRecovery = false
     @State private var showChildAccess = false
 
     var body: some View {
@@ -31,9 +32,10 @@ struct LoginView: View {
                     .frame(maxWidth: .infinity)
                 }
             }
-            .sheet(isPresented: $showSignUp) {
-                SignUpView().environmentObject(authService)
+            .sheet(item: $signupAccountType) { type in
+                SignUpView(accountType: type).environmentObject(authService)
             }
+            .sheet(isPresented: $showPasswordRecovery) { PasswordRecoveryRequestView().environmentObject(authService) }
             .sheet(isPresented: $showChildAccess) {
                 ChildAccessLoginView().environmentObject(authService)
             }
@@ -64,18 +66,21 @@ struct LoginView: View {
     private var signInCard: some View {
         VStack(alignment: .leading, spacing: 16) {
             Text("Welcome back").font(.title2.bold())
+            SocialSignInButtons()
+            if let error = authService.errorMessage {
+                Text(error).font(.caption).foregroundStyle(.red)
+            }
+
             TextField("Email", text: $email)
                 .textInputAutocapitalization(.never)
                 .keyboardType(.emailAddress)
                 .textContentType(.emailAddress)
                 .brandField()
+                .disabled(authService.isLoading)
             SecureField("Password", text: $password)
                 .textContentType(.password)
                 .brandField()
-
-            if let error = authService.errorMessage {
-                Text(error).font(.caption).foregroundStyle(.red)
-            }
+                .disabled(authService.isLoading)
 
             Button {
                 Task { await authService.signIn(email: email.trimmingCharacters(in: .whitespacesAndNewlines), password: password) }
@@ -93,9 +98,24 @@ struct LoginView: View {
             }
             .disabled(authService.isLoading || email.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty || password.isEmpty)
 
-            Button("Create an account") { showSignUp = true }
+            Button("Forgot password?") { showPasswordRecovery = true }
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .disabled(authService.isLoading)
+
+            Button("Create a parent account") { signupAccountType = .parent }
                 .font(.subheadline.weight(.semibold))
-                .frame(maxWidth: .infinity)
+                .frame(maxWidth: .infinity, minHeight: 44)
+                .accessibilityIdentifier("createParentAccount")
+                .disabled(authService.isLoading)
+
+            Menu("Other account types") {
+                Button("Provider / Organization") { signupAccountType = .provider }
+                Button("Young adult (18–24)") { signupAccountType = .youth }
+            }
+            .font(.subheadline)
+            .frame(maxWidth: .infinity, minHeight: 44)
+            .accessibilityIdentifier("otherSignupAccountTypes")
+            .disabled(authService.isLoading)
         }
         .padding(22)
         .background(Opportunity313Brand.warmSurface)
@@ -113,6 +133,7 @@ struct LoginView: View {
                 .background(.white.opacity(0.08), in: RoundedRectangle(cornerRadius: 14))
                 .overlay(RoundedRectangle(cornerRadius: 14).stroke(.white.opacity(0.30)))
         }
+        .disabled(authService.isLoading)
     }
 }
 

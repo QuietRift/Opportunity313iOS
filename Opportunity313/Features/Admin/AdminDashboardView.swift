@@ -36,6 +36,9 @@ struct AdminDashboardView: View {
                                 .font(.caption).foregroundStyle(.secondary)
                         }.padding().background(.regularMaterial, in: RoundedRectangle(cornerRadius: 16))
                     } else if service.isLoading { ProgressView("Loading dashboard…").frame(maxWidth: .infinity) }
+                    NavigationLink { IssueReportsView(isAdmin: true) } label: {
+                        ProviderDashboardCard(title: "Issue Reports", description: "Review reported problems and respond to users.", icon: "exclamationmark.bubble")
+                    }.buttonStyle(.plain)
                     NavigationLink { SchoolTicketAdministrationView() } label: {
                         ProviderDashboardCard(title: "School Ticketing", description: "Manage existing school ticket operations.", icon: "ticket")
                     }.buttonStyle(.plain)

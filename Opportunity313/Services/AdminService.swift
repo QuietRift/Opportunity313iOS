@@ -92,7 +92,7 @@ final class AdminService: ObservableObject {
     }
 
     func roleNames(for userID: UUID) -> String {
-        let names = roles.filter { $0.user_id == userID }.map { $0.role.capitalized }.sorted()
+        let names = roles.filter { $0.user_id == userID }.map { $0.role == "provider" ? "Organization" : $0.role.capitalized }.sorted()
         return names.isEmpty ? "No role assigned" : names.joined(separator: ", ")
     }
 }

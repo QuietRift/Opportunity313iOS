@@ -68,6 +68,8 @@ struct CreateOpportunityView: View {
     @State private var parentRequirements =
         ""
 
+    @State private var acceptsInAppRegistration = false
+
     @State private var registrationURL =
         ""
 
@@ -327,11 +329,15 @@ struct CreateOpportunityView: View {
                     "Registration"
                 ) {
 
+                    Toggle("Accept free registration in Opportunity 313", isOn: $acceptsInAppRegistration)
+                    Text("In-app registration creates a ticket for each attendee after approval.").font(.footnote).foregroundStyle(.secondary)
+
                     TextField(
                         "Registration URL",
                         text:
                             $registrationURL
                     )
+                    .disabled(acceptsInAppRegistration)
                     .textInputAutocapitalization(
                         .never
                     )
@@ -486,11 +492,12 @@ struct CreateOpportunityView: View {
                     parentRequirements:
                         parentRequirements,
                     registrationUrl:
-                        registrationURL,
+                        acceptsInAppRegistration ? nil : registrationURL,
                     capacity:
                         Int(
                             capacityText
-                        )
+                        ),
+                    registrationMethod: acceptsInAppRegistration ? "in_app" : "provider_submission"
                 )
 
             dismiss()
@@ -538,7 +545,7 @@ struct CreateOpportunityView: View {
         let cleanCapacity = capacityText.trimmingCharacters(in: .whitespacesAndNewlines)
         if !cleanCapacity.isEmpty && (Int(cleanCapacity) ?? 0) <= 0 { return false }
         let cleanURL = registrationURL.trimmingCharacters(in: .whitespacesAndNewlines)
-        if !cleanURL.isEmpty {
+        if !acceptsInAppRegistration && !cleanURL.isEmpty {
             guard let url = URL(string: cleanURL),
                   ["https", "http"].contains(url.scheme?.lowercased() ?? ""),
                   url.host != nil else { return false }

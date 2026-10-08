@@ -18,6 +18,9 @@ struct Organization: Codable, Identifiable {
     let contactEmail: String?
     let contactPhone: String?
     let website: String?
+    var serviceArea: String? = nil
+    var address: String? = nil
+    var city: String? = nil
 
     let verificationStatus: String
     let verifiedAt: Date?
@@ -46,6 +49,8 @@ struct Organization: Codable, Identifiable {
         case contactPhone =
             "contact_phone"
 
+        case serviceArea = "service_area"
+        case address, city
         case website
 
         case verificationStatus =

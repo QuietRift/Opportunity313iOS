@@ -23,7 +23,9 @@ final class ParentManagedYouthService: ObservableObject {
     @Published var isLoading = false
     @Published var errorMessage: String?
 
-    private let supabase = SupabaseManager.shared.client
+    private let supabase: SupabaseClient
+
+    init(client: SupabaseClient = SupabaseManager.shared.client) { supabase = client }
 
 
     // MARK: - Load Children
@@ -113,7 +115,7 @@ final class ParentManagedYouthService: ObservableObject {
         interests: [String],
         accessibilityPreferences: [String],
         relationship: String
-    ) async throws {
+    ) async throws -> UUID {
 
         isLoading = true
         errorMessage = nil
@@ -178,6 +180,7 @@ final class ParentManagedYouthService: ObservableObject {
                 object: nil,
                 userInfo: ["youthProfileID": newYouthID]
             )
+            return newYouthID
 
         } catch {
 
