@@ -62,7 +62,7 @@ final class AuthService: ObservableObject {
             isAuthenticated = session != nil
 
             if session != nil {
-                if shouldLoadAccount { await loadUserRole() }
+                if shouldLoadAccount { await loadUserRole(); await OpportunityAlerts.shared.connectRegistrationDevice() }
 
             } else {
 
@@ -238,6 +238,7 @@ final class AuthService: ObservableObject {
 
         do {
 
+            try await OpportunityAlerts.shared.disconnectRegistrationDevice()
             try await supabase.auth
                 .signOut()
 

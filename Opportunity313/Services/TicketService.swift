@@ -93,6 +93,7 @@ final class TicketService: ObservableObject {
             hold = nil
             notice = issued.isEmpty ? "Already confirmed. Your tickets are in My Tickets." : "\(issued.count) ticket\(issued.count == 1 ? "" : "s") confirmed."
             if !stored { notice = "Confirmed. Open My Tickets to generate an entry code on this device." }
+            NotificationCenter.default.post(name: .opportunityTicketsDidChange, object: nil)
             return true
         } catch {
             guard user == client.auth.currentUser?.id else { return false }
@@ -154,6 +155,7 @@ final class TicketService: ObservableObject {
             guard user == client.auth.currentUser?.id else { return }
             TicketTokenStore.remove(userID: user, ticketID: ticketID)
             await loadTickets()
+            NotificationCenter.default.post(name: .opportunityTicketsDidChange, object: nil)
         } catch {
             if user == client.auth.currentUser?.id { errorMessage = error.localizedDescription }
         }

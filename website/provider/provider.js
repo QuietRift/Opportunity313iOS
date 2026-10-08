@@ -11,6 +11,9 @@ const sample = [
 ];
 const sampleOrganization = { name: "Detroit Community Partners", organization_type: "community_provider", description: "Sample organization connecting Detroit youth with local programs.", website: "https://example.org", contact_name: "Sample contact", contact_email: "hello@example.org", contact_phone: "", service_area: "Detroit", address: "", city: "Detroit", verification_status: "pending" };
 const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", busy: 0, loading: false, epoch: 0, profileDirty: false, confirmationEmail: null };
+let detailID = null;
+let updateRequestID = crypto.randomUUID();
+let rosterVersion = 0;
 let refreshPromise;
 let loadPromise;
 
@@ -183,12 +186,18 @@ function openDetail(id) {
   const range = (min, max) => min == null && max == null ? "Not specified" : `${min ?? "Any"} – ${max ?? "Any"}`;
   const fields = [ ["Category", item.category], ["Format", item.opportunity_type], ["Submitted", dateLabel(item.created_at)], ["Eligibility", titleCase(item.gender_eligibility || "all")], ["Ages", range(item.age_min,item.age_max)], ["Grades",range(item.grade_min,item.grade_max)], ["Starts",dateLabel(item.starts_at,true)], ["Ends",dateLabel(item.ends_at,true)], ["Application deadline",dateLabel(item.deadline,true)], ["Location",item.location_name], ["Cost",item.is_free ? "Free" : item.cost_cents == null ? "Not provided" : new Intl.NumberFormat("en-US",{ style:"currency",currency:"USD" }).format(item.cost_cents/100)], ["Capacity", item.capacity], ["Transportation",item.transportation], ["Accessibility",item.accessibility], ["Parent requirements",item.parent_requirements], ["Registration link",item.registration_url] ];
   $("#detail-fields").innerHTML = fields.map(([label,value]) => `<div><dt>${escapeHTML(label)}</dt><dd>${escapeHTML(value ?? "Not provided")}</dd></div>`).join("");
+  detailID = item.id; rosterVersion++;
+  updateRequestID = crypto.randomUUID(); $("#update-form").reset(); $("#update-status").textContent = "";
+  showFormError("#update-error", ""); $("#roster-list").replaceChildren(); $("#roster-summary").textContent = "";
+  $("#attendee-tools").hidden = state.preview || item.registration_method !== "in_app";
+  $("#update-form").hidden = !["published", "closed"].includes(item.status);
   $("#detail-dialog").showModal();
+  if (!$("#attendee-tools").hidden) loadAttendees();
 }
 async function signOut() {
   const session = state.session; state.epoch++;
   saveSession(null); state.user = null; state.org = null; state.preview = true; state.opportunities = sample; state.profileDirty = false;
-  $("#workspace-error").hidden = true; $("#opportunity-form").reset(); closeDialog("auth-dialog"); closeDialog("opportunity-dialog"); closeDialog("detail-dialog");
+  $("#workspace-error").hidden = true; $("#opportunity-form").reset(); $("#opportunity-form").elements.registration_url.disabled=false; closeDialog("auth-dialog"); closeDialog("opportunity-dialog"); closeDialog("detail-dialog");
   render(); showNotice("You’ve signed out.");
   if (session) { try { await Opportunity313Auth.request("/auth/v1/logout?scope=local",{method:"POST",session}); } catch { /* Local session is cleared regardless. */ } }
 }
@@ -267,12 +276,13 @@ $("#opportunity-form").addEventListener("submit",async(event)=>{
     if(ageMin!==null && ageMax!==null && ageMin>ageMax)throw new Error("Minimum age must be less than or equal to maximum age.");
     if(gradeMin!==null && gradeMax!==null && gradeMin>gradeMax)throw new Error("Minimum grade must be less than or equal to maximum grade.");
     if(endsAt && endsAt<startsAt)throw new Error("End time must be after the start time.");
-    const payload={organization_id:state.org.id,title:String(fields.get("title")).trim(),summary:String(fields.get("summary")).trim(),category:fields.get("category"),opportunity_type:fields.get("opportunity_type"),age_min:ageMin,age_max:ageMax,grade_min:gradeMin,grade_max:gradeMax,gender_eligibility:fields.get("gender_eligibility"),starts_at:startsAt,ends_at:endsAt,deadline,cost_cents:Math.round(Number(fields.get("cost")||0)*100),is_free:Number(fields.get("cost")||0)===0,location_name:String(fields.get("location_name")).trim(),neighborhood:String(fields.get("neighborhood")||"").trim()||null,transportation:String(fields.get("transportation")||"").trim()||null,meals_provided:fields.has("meals_provided"),accessibility:String(fields.get("accessibility")||"").trim()||null,parent_requirements:String(fields.get("parent_requirements")||"").trim()||null,registration_method:"provider_submission",registration_url:String(fields.get("registration_url")||"").trim()||null,capacity:numberOrNull(fields.get("capacity")),status:"pending_review",created_by:state.user.id};
+    const payload={organization_id:state.org.id,title:String(fields.get("title")).trim(),summary:String(fields.get("summary")).trim(),category:fields.get("category"),opportunity_type:fields.get("opportunity_type"),age_min:ageMin,age_max:ageMax,grade_min:gradeMin,grade_max:gradeMax,gender_eligibility:fields.get("gender_eligibility"),starts_at:startsAt,ends_at:endsAt,deadline,cost_cents:Math.round(Number(fields.get("cost")||0)*100),is_free:Number(fields.get("cost")||0)===0,location_name:String(fields.get("location_name")).trim(),neighborhood:String(fields.get("neighborhood")||"").trim()||null,transportation:String(fields.get("transportation")||"").trim()||null,meals_provided:fields.has("meals_provided"),accessibility:String(fields.get("accessibility")||"").trim()||null,parent_requirements:String(fields.get("parent_requirements")||"").trim()||null,registration_method:fields.has("in_app") ? "in_app" : "provider_submission",registration_url:fields.has("in_app") ? null : String(fields.get("registration_url")||"").trim()||null,capacity:numberOrNull(fields.get("capacity")),status:"pending_review",created_by:state.user.id};
+    if(fields.has("in_app") && !payload.is_free)throw new Error("In-app registrations are available for free opportunities. Use your provider link for paid registrations.");
     if(!payload.title || !payload.summary || !payload.location_name)throw new Error("Enter a title, description, and location before submitting.");
     if(payload.registration_url && !/^https?:\/\//i.test(payload.registration_url))throw new Error("Use an http or https registration link.");
     setBusy(form,true);
     await request("/rest/v1/opportunities",{method:"POST",body:payload});
-    closeDialog("opportunity-dialog");form.reset();$("#opportunity-search").value="";setFilter("all");setView("opportunities");showNotice("Opportunity submitted. It is pending admin review.");
+    closeDialog("opportunity-dialog");form.reset();form.elements.registration_url.disabled=false;$("#opportunity-search").value="";setFilter("all");setView("opportunities");showNotice("Opportunity submitted. It is pending admin review.");
     try{state.opportunities=await fetchOpportunities();render();}catch(error){$("#workspace-error-message").textContent=`Your submission was saved, but the list could not refresh. ${error.message}`;$("#workspace-error").hidden=false;}
   }catch(error){showFormError("#opportunity-error",error.message);}finally{setBusy(form,false);}
 });
@@ -282,3 +292,43 @@ try {
   const saved=JSON.parse(sessionStorage.getItem(SESSION_KEY)||"null");
   if(saved?.refresh_token){saveSession(saved);state.preview=false;state.opportunities=[];render();loadProvider().catch((error)=>{ $("#workspace-error-message").textContent=`Unable to restore the workspace: ${error.message} You can retry or sign out.`;$("#workspace-error").hidden=false; });}
 }catch{saveSession(null);}
+
+async function loadAttendees() {
+  if (!detailID || state.preview) return;
+  const id = detailID, epoch = state.epoch, version = ++rosterVersion;
+  $("#roster-summary").textContent = "Loading attendees…";
+  try {
+    const roster = await request("/rest/v1/rpc/native_opportunity_attendees", {method:"POST",body:{opportunity_id_input:id}});
+    if (id !== detailID || epoch !== state.epoch || version !== rosterVersion) return;
+    $("#roster-summary").textContent = `${roster.registered_count} registered · ${roster.attended_count} attended · ${roster.cancelled_count} cancelled${roster.remaining == null ? "" : ` · ${roster.remaining} spots remaining`}`;
+    $("#roster-list").innerHTML = roster.attendees.length ? roster.attendees.map(a => `<article class="form-section"><strong>${escapeHTML(a.attendee_name)}</strong><p>${escapeHTML(a.status === "used" ? "Attended" : titleCase(a.status))}</p>${a.status === "upcoming" ? `<button type="button" class="text-button" data-attend="${escapeHTML(a.id)}">Mark attended</button>` : ""}</article>`).join("") : "<p>No registrations yet.</p>";
+  } catch(error) { if(id === detailID && epoch === state.epoch && version === rosterVersion) $("#roster-summary").textContent = error.message; }
+}
+$("#load-attendees").addEventListener("click", loadAttendees);
+$("#roster-list").addEventListener("click",async event => {
+  const button = event.target.closest("[data-attend]");
+  if (!button || state.busy || !window.confirm("Record this attendee as attended?")) return;
+  button.disabled = true;
+  try { await request("/rest/v1/rpc/native_mark_opportunity_attendance",{method:"POST",body:{registration_id_input:button.dataset.attend}}); await loadAttendees(); }
+  catch(error) { $("#roster-summary").textContent = error.message; button.disabled = false; }
+});
+$("#update-form").addEventListener("submit",async event => {
+  event.preventDefault(); const form = event.currentTarget;
+  if (state.busy || state.preview || !detailID) return;
+  const fields = new FormData(form);
+  const title = String(fields.get("title")).trim(), body = String(fields.get("body")).trim();
+  if (!title || !body) return;
+  if (!window.confirm("Send this update to registered attendees and their linked parents?")) return;
+  setBusy(form,true); showFormError("#update-error","");
+  try {
+    const count = await request("/rest/v1/rpc/native_publish_opportunity_update",{method:"POST",body:{opportunity_id_input:detailID,title_input:title,body_input:body,request_id_input:updateRequestID}});
+    $("#update-status").textContent = `Update delivered to ${count} registered attendee and parent accounts.`;
+    form.reset(); updateRequestID = crypto.randomUUID();
+  } catch(error) { showFormError("#update-error",error.message); }
+  finally { setBusy(form,false); }
+});
+$("#update-form").addEventListener("input", () => { updateRequestID = crypto.randomUUID(); });
+$("#opportunity-form").elements.in_app.addEventListener("change", event => {
+  const link = $("#opportunity-form").elements.registration_url;
+  link.disabled = event.target.checked;
+});

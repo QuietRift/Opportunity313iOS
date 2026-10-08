@@ -53,6 +53,7 @@ struct TicketAllocation: Decodable, Identifiable {
 
 struct EventTicket: Decodable, Identifiable {
     let id: UUID
+    var canManageReservation: Bool? = nil
     let eventID: UUID
     let eventTitle: String
     let allocationName: String
@@ -66,7 +67,7 @@ struct EventTicket: Decodable, Identifiable {
     let isDemo: Bool
     let issuedAt: Date
     var canShowCode: Bool { status == "issued" && !["cancelled", "completed", "draft"].contains(eventStatus) }
-    func canCancel(at date: Date) -> Bool { status == "issued" && date < startsAt }
+    func canCancel(at date: Date) -> Bool { canManageReservation != false && status == "issued" && date < startsAt }
     var statusText: String {
         if eventStatus == "cancelled" { return "Event Cancelled" }
         if status == "void" { return "Cancelled" }
@@ -80,6 +81,7 @@ struct EventTicket: Decodable, Identifiable {
         case eventID = "event_id", eventTitle = "event_title", allocationName = "allocation_name"
         case startsAt = "starts_at", venueName = "venue_name", eventStatus = "event_status", isDemo = "is_demo", issuedAt = "issued_at"
         case assignedYouthName = "assigned_youth_name"
+        case canManageReservation = "can_manage_reservation"
     }
 }
 

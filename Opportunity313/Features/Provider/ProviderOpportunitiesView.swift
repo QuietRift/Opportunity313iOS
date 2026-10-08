@@ -54,10 +54,16 @@ struct ProviderOpportunitiesView: View {
                             .opportunities
                     ) { opportunity in
 
-                        ProviderOpportunityRow(
-                            opportunity:
-                                opportunity
-                        )
+                        if opportunity.offersInAppTickets {
+                            NavigationLink { OpportunityAttendeesView(opportunity: opportunity) } label: {
+                                VStack(alignment: .leading, spacing: 6) {
+                                    ProviderOpportunityRow(opportunity: opportunity)
+                                    Label("View Attendees", systemImage: "person.2").font(.caption)
+                                }
+                            }
+                        } else {
+                            ProviderOpportunityRow(opportunity: opportunity)
+                        }
                     }
                     .listStyle(.plain)
                     .scrollContentBackground(.hidden)

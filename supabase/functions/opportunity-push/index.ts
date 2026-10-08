@@ -48,7 +48,31 @@ Deno.serve(async request => {
       const { data: finished, error: finishError } = await admin.rpc("finish_opportunity_push_event", { target_id: event.id, target_lease: event.lease_id, result, message_id: messageID, error_code: errorCode });
       if (finishError || finished !== true) throw new Error("finish_failed");
     }
-    return json({ accepted });
+    const { data: registrations, error: registrationError } = await admin.rpc("claim_registration_push_events");
+    if (registrationError) throw new Error("registration_claim_failed");
+    let registrationAccepted = 0;
+    for (const event of registrations ?? []) {
+      let success = false, permanent = false;
+      try {
+        // Generic lock-screen text keeps attendee and update details inside the authenticated inbox.
+        const response = await fetch(`https://fcm.googleapis.com/v1/projects/${encodeURIComponent(account.project_id)}/messages:send`, {
+          method: "POST", signal: AbortSignal.timeout(15000), headers: { Authorization: `Bearer ${accessToken}`, "Content-Type": "application/json" },
+          body: JSON.stringify({message: {
+            token: event.token,
+            notification: {title: "Opportunity update", body: "A provider shared an update about your registration. Open Opportunity313 to read it."},
+            data: {registration_update_id: event.notification_id, opportunity_id: event.opportunity_id},
+            apns: {headers: {"apns-push-type":"alert", "apns-priority":"10", "apns-expiration":String(Math.floor(Date.now()/1000)+3600)}, payload:{aps:{sound:"default"}}},
+            android: {ttl:"3600s"},
+          }}),
+        });
+        success = response.ok;
+        permanent = response.status >= 400 && response.status < 500 && response.status !== 429;
+        if (success) registrationAccepted++;
+      } catch { /* A network failure retries after the lease expires. */ }
+      const { error: finishError } = await admin.rpc("finish_registration_push_event", {target_id:event.id,target_lease:event.lease_id,success,permanent_failure:permanent});
+      if (finishError) throw new Error("registration_finish_failed");
+    }
+    return json({ accepted, registrationAccepted });
   } catch {
     console.error("Opportunity push processing unavailable; expired leases can retry.");
     return json({ error: "Push processing unavailable" }, 503);

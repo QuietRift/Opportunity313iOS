@@ -64,6 +64,25 @@ struct HomeView: View {
                     interestSection
                     recommendedSection
                     deadlineSection
+                    NavigationLink { MyRegistrationsView() } label: {
+                        ParentDashboardCard(
+                            title: "My Registrations",
+                            description: "View your registrations and attendance.",
+                            icon: "checklist"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("youthRegistrationsShortcut")
+
+                    NavigationLink { DashboardTicketsListView() } label: {
+                        ParentDashboardCard(
+                            title: "Tickets",
+                            description: "View your tickets and get event tickets.",
+                            icon: "ticket.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("youthTicketsShortcut")
                 }
                 .padding(20)
                 .frame(maxWidth: 800)

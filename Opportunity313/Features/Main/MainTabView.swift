@@ -8,6 +8,7 @@
 import SwiftUI
 
 struct MainTabView: View {
+    @ObservedObject private var alerts = OpportunityAlerts.shared
 
     @EnvironmentObject var authService:
         AuthService
@@ -48,7 +49,11 @@ struct MainTabView: View {
                 )
             }
         }
+        .sheet(item: Binding(get: { alerts.openedRegistrationUpdateID.map { UpdateDestination(id: $0) } }, set: { if $0 == nil { alerts.openedRegistrationUpdateID = nil } })) { _ in
+            NavigationStack { RegistrationUpdatesView().toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { alerts.openedRegistrationUpdateID = nil } } } }
+        }
     }
+    private struct UpdateDestination: Identifiable { let id: UUID }
 }
 
 

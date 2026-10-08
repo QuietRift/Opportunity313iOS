@@ -80,6 +80,16 @@ struct ProviderHomeView: View {
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("providerOpportunitiesShortcut")
 
+                    NavigationLink { ProviderAttendeeDirectoryView(organization: organization) } label: {
+                        ProviderDashboardCard(
+                            title: "Attendees",
+                            description: "View registrations and record attendance.",
+                            icon: "person.3.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("providerAttendeesShortcut")
+
                     Button(action: onEvents) {
                         ProviderDashboardCard(
                             title: "Events",

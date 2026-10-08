@@ -15,7 +15,11 @@ final class OpportunityAlerts: NSObject, ObservableObject, MessagingDelegate, UN
     @Published private(set) var busy = false
     @Published private(set) var message = "Phone alerts are being set up. You can browse approved opportunities in Discover."
     private var connected = false
+    private var registrationToken: String?
+    private var registrationDeviceAllowed = true
+    private var registrationDeviceSync: Task<Void, Never>?
     @Published var openedOpportunityID: UUID?
+    @Published var openedRegistrationUpdateID: UUID?
 
     func configure() {
         guard Bundle.main.path(forResource: "GoogleService-Info", ofType: "plist") != nil else { return }
@@ -26,12 +30,42 @@ final class OpportunityAlerts: NSObject, ObservableObject, MessagingDelegate, UN
         Task { await refresh() }
     }
 
+    func connectRegistrationDevice() async {
+        registrationDeviceAllowed = true
+        await syncRegistrationDevice()
+    }
+
+    func syncRegistrationDevice() async {
+        guard registrationDeviceAllowed, configured, enabled, Messaging.messaging().apnsToken != nil, SupabaseManager.shared.client.auth.currentUser != nil else { return }
+        if let registrationDeviceSync { await registrationDeviceSync.value; return }
+        let task = Task { @MainActor in
+            do {
+                let token = try await Messaging.messaging().token()
+                struct Params: Encodable { let token_input: String; let enabled_input: Bool }
+                try await SupabaseManager.shared.client.rpc("native_registration_push_device", params: Params(token_input: token, enabled_input: true)).execute()
+                registrationToken = token
+            } catch { message = "Registration phone alerts couldn’t connect. Updates are still available in My Registrations." }
+        }
+        registrationDeviceSync = task
+        await task.value
+        registrationDeviceSync = nil
+    }
+
+    func disconnectRegistrationDevice() async throws {
+        registrationDeviceAllowed = false
+        await registrationDeviceSync?.value
+        guard configured, let token = registrationToken else { return }
+        struct Params: Encodable { let token_input: String; let enabled_input: Bool }
+        try await SupabaseManager.shared.client.rpc("native_registration_push_device", params: Params(token_input: token, enabled_input: false)).execute()
+        registrationToken = nil
+    }
+
     func refresh() async {
         guard configured else { return }
         let settings = await UNUserNotificationCenter.current().notificationSettings()
         let allowed = settings.authorizationStatus == .authorized || settings.authorizationStatus == .provisional
         message = !allowed ? "Allow notifications in iPhone Settings to receive alerts." : enabled ? (connected ? "You’ll receive alerts when new opportunities are approved." : "Connecting alerts…") : "Choose Enable alerts to hear about new approved opportunities."
-        if allowed && enabled { UIApplication.shared.registerForRemoteNotifications() }
+        if allowed && enabled { UIApplication.shared.registerForRemoteNotifications(); await syncRegistrationDevice() }
     }
 
     func enable() async {
@@ -44,6 +78,7 @@ final class OpportunityAlerts: NSObject, ObservableObject, MessagingDelegate, UN
                 return
             }
             // Subscribe after APNs registration and an FCM token arrive.
+            registrationDeviceAllowed = true
             enabled = true
             UserDefaults.standard.set(true, forKey: "opportunity313.alertsEnabled")
             Messaging.messaging().isAutoInitEnabled = true
@@ -58,6 +93,7 @@ final class OpportunityAlerts: NSObject, ObservableObject, MessagingDelegate, UN
         busy = true
         defer { busy = false }
         do {
+            try await disconnectRegistrationDevice()
             try await Messaging.messaging().unsubscribe(fromTopic: Self.topic)
             enabled = false
             connected = false
@@ -93,12 +129,16 @@ final class OpportunityAlerts: NSObject, ObservableObject, MessagingDelegate, UN
     }
 
     nonisolated func messaging(_ messaging: Messaging, didReceiveRegistrationToken fcmToken: String?) {
-        Task { @MainActor in self.subscribe() }
+        Task { @MainActor in self.subscribe(); await self.syncRegistrationDevice() }
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, willPresent notification: UNNotification) async -> UNNotificationPresentationOptions {
         await MainActor.run { self.enabled ? [.banner, .sound] : [] }
     }
     nonisolated func userNotificationCenter(_ center: UNUserNotificationCenter, didReceive response: UNNotificationResponse) async {
+        if let raw = response.notification.request.content.userInfo["registration_update_id"] as? String, let id = UUID(uuidString: raw) {
+            await MainActor.run { self.openedRegistrationUpdateID = id }
+            return
+        }
         guard let raw = response.notification.request.content.userInfo["opportunity_id"] as? String, let id = UUID(uuidString: raw) else { return }
         await MainActor.run { self.openedOpportunityID = id }
     }
@@ -120,8 +160,9 @@ struct OpportunityAlertsView: View {
     @Environment(\.scenePhase) private var scenePhase
     var body: some View {
         Form {
-            Section("New opportunity alerts") {
-                Text("Receive a phone notification when an administrator approves a new opportunity.")
+            Section { NavigationLink { RegistrationUpdatesView() } label: { Label("Opportunity Updates", systemImage: "bell") } }
+            Section("Phone alerts") {
+                Text("Receive phone notifications for new approved opportunities and updates to your registrations.")
                 Text(alerts.message).foregroundStyle(.secondary)
                 if alerts.configured {
                     Button(alerts.enabled ? "Turn off alerts" : "Enable alerts") { Task { if alerts.enabled { await alerts.disable() } else { await alerts.enable() } } }.disabled(alerts.busy)

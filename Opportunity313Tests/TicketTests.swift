@@ -74,6 +74,9 @@ struct TicketTests {
         func ticket(_ status: String, eventStatus: String = "on_sale") -> EventTicket {
             EventTicket(id: UUID(), eventID: UUID(), eventTitle: "Event", allocationName: "Admission", assignedYouthName: nil, startsAt: start, timezone: "America/Detroit", venueName: "Venue", address: "Detroit", status: status, eventStatus: eventStatus, isDemo: true, issuedAt: Date(timeIntervalSince1970: 1_000))
         }
+        var childTicket = ticket("issued")
+        childTicket.canManageReservation = false
+        #expect(!childTicket.canCancel(at: start.addingTimeInterval(-1)))
         #expect(ticket("issued").canShowCode)
         #expect(!ticket("scanned").canShowCode)
         #expect(!ticket("void").canShowCode)

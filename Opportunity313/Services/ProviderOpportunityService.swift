@@ -85,7 +85,8 @@ final class ProviderOpportunityService: ObservableObject {
         accessibility: String?,
         parentRequirements: String?,
         registrationUrl: String?,
-        capacity: Int?
+        capacity: Int?,
+        registrationMethod: String = "provider_submission"
     ) async throws {
 
         guard let userID =
@@ -162,7 +163,7 @@ final class ProviderOpportunityService: ObservableObject {
                         parentRequirements
                     ),
                 registrationMethod:
-                    "provider_submission",
+                    registrationMethod,
                 registrationUrl:
                     cleaned(
                         registrationUrl

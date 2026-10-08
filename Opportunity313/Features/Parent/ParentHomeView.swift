@@ -28,6 +28,7 @@ struct ParentHomeView: View {
 
                     dashboardHeader
 
+
                     Button(action: onChildren) {
                         ParentDashboardCard(
                             title: "Your Children",
@@ -61,6 +62,26 @@ struct ParentHomeView: View {
                     }
                     .buttonStyle(.plain)
                     .accessibilityIdentifier("parentDeadlinesShortcut")
+
+                    NavigationLink { MyRegistrationsView() } label: {
+                        ParentDashboardCard(
+                            title: "My Registrations",
+                            description: "View your family's registrations and attendance.",
+                            icon: "checklist"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentRegistrationsShortcut")
+
+                    NavigationLink { DashboardTicketsListView() } label: {
+                        ParentDashboardCard(
+                            title: "Tickets",
+                            description: "View your family's tickets and get event tickets.",
+                            icon: "ticket.fill"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentTicketsShortcut")
                 }
                 .frame(maxWidth: 800)
                 .frame(maxWidth: .infinity)

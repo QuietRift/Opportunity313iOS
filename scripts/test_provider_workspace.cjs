@@ -12,7 +12,7 @@ const orgID = '00000000-0000-0000-0000-000000000002';
 const organization = {id:orgID,name:'Fixture Detroit Learning',organization_type:'nonprofit',description:'Fixture organization',contact_name:'Fixture contact',contact_email:'fixture@example.org',contact_phone:'313-555-0100',website:'https://example.org',service_area:'Detroit',address:'',city:'Detroit',verification_status:'pending'};
 const items = [
  {id:'fixture-1',title:'Pending fixture',category:'Arts',summary:'Pending description',status:'pending_review',verification_status:'pending',created_at:'2026-10-01T12:00:00Z',is_free:true},
- {id:'fixture-2',title:'Approved fixture',category:'Sports',summary:'Approved description',status:'published',verification_status:'verified',created_at:'2026-10-01T12:00:00Z',is_free:true},
+ {id:'fixture-2',registration_method:'in_app',title:'Approved fixture',category:'Sports',summary:'Approved description',status:'published',verification_status:'verified',created_at:'2026-10-01T12:00:00Z',is_free:true},
  {id:'fixture-3',title:'Rejected fixture',category:'Technology',summary:'Rejected description',status:'closed',verification_status:'rejected',created_at:'2026-10-01T12:00:00Z',is_free:true}
 ];
 const server=http.createServer((req,res)=>{
@@ -31,10 +31,14 @@ const server=http.createServer((req,res)=>{
  const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'America/Los_Angeles'});
  const page=await context.newPage();
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ let publishedUpdates=0, updatePayload, attended=false;
  let org={...organization},rows=items.map(item=>({...item})),profilePayload,opportunityPayload,failProfile=false,failList=false,role='provider',hasMembership=true,refreshes=0,signupConfirmation=false,logouts=0;
  const fulfill=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
  await page.route('https://pinpurdjfbvxrwexzlre.supabase.co/**',async(route)=>{
   const request=route.request(),url=new URL(request.url()),body=request.postDataJSON();
+  if(url.pathname==='/rest/v1/rpc/native_opportunity_attendees')return fulfill(route,{registered_count:1,attended_count:attended?1:0,cancelled_count:0,remaining:9,attendees:[{id:'attendee-fixture',attendee_name:'Fixture Child <script>',status:attended?'used':'upcoming'}]});
+  if(url.pathname==='/rest/v1/rpc/native_mark_opportunity_attendance'){assert.equal(body.registration_id_input,'attendee-fixture');attended=true;return fulfill(route,null);}
+  if(url.pathname==='/rest/v1/rpc/native_publish_opportunity_update'){publishedUpdates++;updatePayload=body;return fulfill(route,2);}
   if(url.pathname==='/auth/v1/token'){if(url.search.includes('refresh_token'))refreshes++;return fulfill(route,{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_in:3600,user:{id:userID,email:'fixture@example.org'}});}
   if(url.pathname==='/auth/v1/signup')return fulfill(route,signupConfirmation?{user:{id:userID}}:{access_token:'fixture-token',refresh_token:'fixture-refresh',expires_in:3600});
   if(url.pathname==='/auth/v1/resend')return fulfill(route,{});
@@ -72,6 +76,20 @@ const server=http.createServer((req,res)=>{
  await page.locator('#opportunity-rows').getByRole('button',{name:'Rejected fixture',exact:true}).click();assert.equal(await page.locator('#detail-status').textContent(),'Rejected');
  await page.keyboard.press('Escape');assert(!(await page.locator('#detail-dialog').evaluate(dialog=>dialog.open)));
  await page.locator('#opportunity-search').fill('no fixture matches');assert(await page.getByRole('heading',{name:'No matching submissions'}).isVisible());await page.locator('#opportunity-search').fill('');
+ await page.locator('.filter[data-filter=all]').click();
+ await page.locator('#opportunity-rows').getByRole('button',{name:'Approved fixture',exact:true}).click();
+ await page.getByText('1 registered · 0 attended · 0 cancelled · 9 spots remaining',{exact:true}).waitFor();
+ assert.equal(await page.locator('#roster-list strong').textContent(),'Fixture Child <script>');
+ page.on('dialog',dialog=>dialog.accept());
+ await page.getByRole('button',{name:'Mark attended',exact:true}).click();
+ await page.getByText('1 registered · 1 attended · 0 cancelled · 9 spots remaining',{exact:true}).waitFor();
+ await page.locator('#update-form [name=title]').fill('Location reminder');
+ await page.locator('#update-form [name=body]').fill('Use the north entrance.');
+ await page.locator('#update-form button[type=submit]').click();
+ await page.getByText('Update delivered to 2 registered attendee and parent accounts.',{exact:true}).waitFor();
+ assert.equal(publishedUpdates,1);assert.equal(updatePayload.opportunity_id_input,'fixture-2');assert.equal(updatePayload.body_input,'Use the north entrance.');
+ await page.screenshot({path:path.join(artifacts,'provider-attendee-updates.png'),fullPage:true});
+ await page.keyboard.press('Escape');
  await clickView('Organization profile');
  await page.locator('#profile-form [name=name]').fill('Edited Fixture Organization');await page.locator('#profile-form [name=contact_email]').fill('');
  failProfile=true;await page.locator('#profile-save').click();await page.locator('#profile-error').waitFor();assert.equal(await page.locator('#profile-form [name=name]').inputValue(),'Edited Fixture Organization');
@@ -80,8 +98,8 @@ const server=http.createServer((req,res)=>{
  await page.locator('#profile-form [name=city]').fill('Unsaved Detroit edit');await page.locator('#refresh-workspace').click();await page.getByText('Workspace updated.',{exact:true}).waitFor();assert.equal(await page.locator('#profile-form [name=city]').inputValue(),'Unsaved Detroit edit');await page.locator('#profile-reset').click();
  await clickView('Dashboard');await page.locator('#view-overview .create-button').click();
  const editor=page.locator('#opportunity-form');
- await editor.locator('[name=title]').fill('New fixture submission');await editor.locator('[name=summary]').fill('Fixture submission details');await editor.locator('[name=starts_at]').fill('2026-11-10T10:00');await editor.locator('[name=location_name]').fill('Fixture center');await editor.getByRole('button',{name:'Submit for review'}).click();
- await page.getByText('Opportunity submitted. It is pending admin review.',{exact:true}).waitFor();assert.equal(opportunityPayload.status,'pending_review');assert.equal(opportunityPayload.organization_id,orgID);assert.equal(opportunityPayload.created_by,userID);assert.equal(opportunityPayload.starts_at,'2026-11-10T15:00:00.000Z');
+ await editor.locator('[name=title]').fill('New fixture submission');await editor.locator('[name=summary]').fill('Fixture submission details');await editor.locator('[name=starts_at]').fill('2026-11-10T10:00');await editor.locator('[name=location_name]').fill('Fixture center');await editor.locator('[name=in_app]').check();assert(await editor.locator('[name=registration_url]').isDisabled());await editor.getByRole('button',{name:'Submit for review'}).click();
+ await page.getByText('Opportunity submitted. It is pending admin review.',{exact:true}).waitFor();assert.equal(opportunityPayload.registration_method,'in_app');assert.equal(opportunityPayload.registration_url,null);assert.equal(opportunityPayload.status,'pending_review');assert.equal(opportunityPayload.organization_id,orgID);assert.equal(opportunityPayload.created_by,userID);assert.equal(opportunityPayload.starts_at,'2026-11-10T15:00:00.000Z');
  // A failed refresh is visible, recoverable, and does not turn real records into sample data.
  failList=true;await page.locator('#refresh-workspace').click();await page.locator('#workspace-error').waitFor();assert(await page.locator('#preview-banner').isHidden());failList=false;await page.locator('#retry-workspace').click();await page.getByText('Workspace updated.',{exact:true}).waitFor();
  // Session refresh is shared across concurrent requests.
