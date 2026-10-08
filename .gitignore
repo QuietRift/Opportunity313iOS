@@ -10,3 +10,14 @@ xcuserdata/
 !.env.example
 *.local.xcconfig
 Secrets.plist
+
+# Firebase / Resend local configuration and private credentials
+GoogleService-Info.plist
+google-services.json
+*firebase-adminsdk*.json
+*service-account*.json
+*.p8
+*.p12
+*.pem
+supabase/.temp/
+__pycache__/

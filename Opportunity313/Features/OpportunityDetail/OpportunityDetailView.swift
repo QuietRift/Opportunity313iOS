@@ -15,6 +15,7 @@ struct OpportunityDetailView: View {
     @EnvironmentObject var authService: AuthService
 
     @State private var showRegistration = false
+    @State private var showIssueReport = false
 
     let opportunity: Opportunity
     var managedYouthProfileID: UUID? = nil
@@ -421,6 +422,10 @@ struct OpportunityDetailView: View {
             .inline
         )
         .toolbar {
+            ToolbarItem(placement: .topBarTrailing) {
+                Menu { Button("Report an Issue") { showIssueReport = true } } label: { Image(systemName: "ellipsis.circle") }
+                    .accessibilityLabel("Opportunity actions")
+            }
 
             if authService.role == "youth" ||
                 (authService.role == "parent" && managedYouthProfileID != nil) {
@@ -466,6 +471,12 @@ struct OpportunityDetailView: View {
         .task {
             if let managedYouthProfileID {
                 await familySaveService.loadSaves(for: [managedYouthProfileID])
+            }
+        }
+        .sheet(isPresented: $showIssueReport) {
+            NavigationStack {
+                ReportIssueView(opportunityID: opportunity.id, opportunityName: opportunity.title, initialCategory: .opportunity)
+                    .toolbar { ToolbarItem(placement: .confirmationAction) { Button("Done") { showIssueReport = false } } }
             }
         }
         .sheet(isPresented: $showRegistration) {

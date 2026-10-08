@@ -107,6 +107,7 @@ struct OpportunityTicketDetailView: View {
                             Text("Show this ticket to the opportunity provider.").font(.subheadline)
                         }
                         Text("Ticket ID: \(ticket.id.uuidString)").font(.caption).textSelection(.enabled)
+                        NavigationLink { ReportIssueView(opportunityID: ticket.opportunityID, opportunityName: ticket.opportunityName, initialCategory: .registration) } label: { Label("Report a Registration Issue", systemImage: "exclamationmark.bubble") }
                         if ticket.canCancel == true && ticket.status == .upcoming {
                             Button("Cancel Registration", role: .destructive) { confirmCancel = true }
                                 .disabled(service.isWorking || service.isLoading)

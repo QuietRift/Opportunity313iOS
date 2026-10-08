@@ -45,6 +45,7 @@ struct AccountView: View {
                     NavigationLink {
                         OpportunityAlertsView()
                     } label: { row("Notifications", icon: "bell") }
+                    NavigationLink { ReportIssueView() } label: { row("Report an Issue", icon: "exclamationmark.bubble", subtitle: "Tell the Opportunity313 team what went wrong") }
                     NavigationLink { ProfileHelpView() } label: { row("Help & Support", icon: "questionmark.circle") }
                     NavigationLink { ProfileSettingsView() } label: { row("Account Settings", icon: "gearshape") }
                     if let error = authService.errorMessage {
@@ -219,6 +220,10 @@ struct ProfileMessageView: View {
 struct ProfileHelpView: View {
     var body: some View {
         List {
+            Section("Report a Problem") {
+                NavigationLink { ReportIssueView() } label: { Label("Report an Issue", systemImage: "exclamationmark.bubble") }
+                NavigationLink { IssueReportsView() } label: { Label("My Reports", systemImage: "text.bubble") }
+            }
             Section("Managing Youth Profiles") {
                 Text("Use Add Youth Profile to create a managed profile. Tap a youth's card to review their details, edit interests, or manage their access code.")
             }

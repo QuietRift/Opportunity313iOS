@@ -1,0 +1,22 @@
+project_id = "Opportunity313"
+
+# These workers authenticate x-email-worker-secret / x-push-worker-secret
+# against private Vault credentials before claiming any messages.
+# Preserve the deployed custom-auth setting on subsequent CLI deployments.
+[functions.transactional-email]
+verify_jwt = false
+
+[functions.opportunity-push]
+verify_jwt = false
+
+# Preserve existing deployed endpoints' authentication contracts too.
+# Child access validates codes; deletion validates the caller in its handler;
+# unsubscribe validates the signed preference token (including email one-click POST).
+[functions.child-access]
+verify_jwt = false
+
+[functions.delete-account]
+verify_jwt = false
+
+[functions.email-unsubscribe]
+verify_jwt = false

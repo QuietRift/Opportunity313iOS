@@ -10,3 +10,9 @@ h1,h2,h3{font-family:Manrope,system-ui,sans-serif;line-height:1.25;letter-spacin
 .auth-tabs a{font-size:14px;padding:12px 0;color:#a5410b;font-weight:600;min-height:44px;text-underline-offset:4px}
 
 .auth-tabs>span{font-size:14px;padding:12px 0;font-weight:600;min-height:44px;color:#a5410b;box-shadow:0 2px #a5410b}
+
+#support-form { display: grid; gap: 16px; }
+#support-reports article { border-top: 1px solid var(--line, #dbe2ea); padding: 18px 0; }
+.report-text { white-space: pre-wrap; overflow-wrap: anywhere; }
+
+@media(max-width:760px) { .topbar { flex-wrap: wrap; padding: 12px 0; } .topbar > div:first-child { width: 100%; } .topbar-actions { width: 100%; flex-wrap: wrap; } }

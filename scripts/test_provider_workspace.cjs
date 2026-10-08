@@ -31,11 +31,20 @@ const server=http.createServer((req,res)=>{
  const context=await browser.newContext({viewport:{width:1440,height:1000},timezoneId:'America/Los_Angeles'});
  const page=await context.newPage();
  const errors=[];page.on('pageerror',error=>errors.push(error.message));
+ let issueReports=[], reportPayloads=[], failReportOnce=true;
  let publishedUpdates=0, updatePayload, attended=false;
  let org={...organization},rows=items.map(item=>({...item})),profilePayload,opportunityPayload,failProfile=false,failList=false,role='provider',hasMembership=true,refreshes=0,signupConfirmation=false,logouts=0;
  const fulfill=(route,body,status=200)=>route.fulfill({status,contentType:'application/json',body:JSON.stringify(body)});
  await page.route('https://pinpurdjfbvxrwexzlre.supabase.co/**',async(route)=>{
   const request=route.request(),url=new URL(request.url()),body=request.postDataJSON();
+  if(url.pathname==='/rest/v1/issue_reports'){assert.equal(url.searchParams.get('reporter_id'),`eq.${userID}`);return fulfill(route,issueReports);}
+  if(url.pathname==='/rest/v1/rpc/native_submit_issue_report'){
+   reportPayloads.push(body);
+   const report={id:body.request_id_input,title:body.title_input,details:body.details_input,category:body.category_input,opportunity_name:'Approved fixture',status:'submitted',response:'',created_at:'2026-10-08T04:00:00Z'};
+   if(!issueReports.some(r=>r.id===report.id))issueReports.push(report);
+   if(failReportOnce){failReportOnce=false;return fulfill(route,{message:'Fixture network failure. Retry your report.'},503);}
+   return fulfill(route,report);
+  }
   if(url.pathname==='/rest/v1/rpc/native_opportunity_attendees')return fulfill(route,{registered_count:1,attended_count:attended?1:0,cancelled_count:0,remaining:9,attendees:[{id:'attendee-fixture',attendee_name:'Fixture Child <script>',status:attended?'used':'upcoming'}]});
   if(url.pathname==='/rest/v1/rpc/native_mark_opportunity_attendance'){assert.equal(body.registration_id_input,'attendee-fixture');attended=true;return fulfill(route,null);}
   if(url.pathname==='/rest/v1/rpc/native_publish_opportunity_update'){publishedUpdates++;updatePayload=body;return fulfill(route,2);}
@@ -72,6 +81,29 @@ const server=http.createServer((req,res)=>{
  for(const width of [1024,720,390]){await page.setViewportSize({width,height:1000});await noOverflow();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(artifacts,`dashboard-${width}.png`),fullPage:true});}
  await page.setViewportSize({width:1440,height:1000});
  await signIn();assert(await page.locator('#preview-banner').isHidden());assert.equal(await page.locator('#stat-rejected').textContent(),'1');
+ await page.setViewportSize({width:390,height:1000});await noOverflow();
+ await page.getByRole('button',{name:'Report an issue',exact:true}).click();
+ await noOverflow();assert(await page.locator('#support-dialog').evaluate(dialog=>dialog.scrollWidth<=dialog.clientWidth+1),'Issue dialog overflow');
+ await page.screenshot({path:path.join(artifacts,'provider-issue-mobile.png'),fullPage:true});
+ await page.setViewportSize({width:1440,height:1000});
+ await page.getByText('You haven’t submitted any reports yet.',{exact:true}).waitFor();
+ const support=page.locator('#support-form');
+ await support.locator('[name=category]').selectOption('registration');
+ await support.locator('[name=opportunity_id]').selectOption('fixture-2');
+ await support.locator('[name=title]').fill('Fixture ticket issue');
+ await support.locator('[name=details]').fill('The ticket page shows <script> text and will not load.');
+ await support.getByRole('button',{name:'Submit report',exact:true}).click();
+ await page.getByText('Fixture network failure. Retry your report.',{exact:true}).waitFor();
+ assert.equal(await support.locator('[name=title]').inputValue(),'Fixture ticket issue');
+ await support.getByRole('button',{name:'Submit report',exact:true}).click();
+ await page.locator('#support-reports h4').getByText('Fixture ticket issue',{exact:true}).waitFor();
+ assert.equal(reportPayloads.length,2);assert.equal(reportPayloads[0].request_id_input,reportPayloads[1].request_id_input);assert.equal(issueReports.length,1);assert.equal(reportPayloads[1].opportunity_id_input,'fixture-2');assert.equal(reportPayloads[1].platform_input,'web');
+ assert.equal(await page.locator('#support-reports .report-text').textContent(),'The ticket page shows <script> text and will not load.');
+ issueReports[0].status='resolved';issueReports[0].response='The ticket problem is fixed. Please try again.';
+ await page.getByRole('button',{name:'Refresh reports',exact:true}).click();
+ await page.getByText('The ticket problem is fixed. Please try again.',{exact:true}).waitFor();
+ await page.screenshot({path:path.join(artifacts,'provider-issue-report.png'),fullPage:true});
+ await page.keyboard.press('Escape');
  await page.locator('[data-status=rejected]').click();assert.equal(await page.locator('#opportunity-rows tr').count(),1);
  await page.locator('#opportunity-rows').getByRole('button',{name:'Rejected fixture',exact:true}).click();assert.equal(await page.locator('#detail-status').textContent(),'Rejected');
  await page.keyboard.press('Escape');assert(!(await page.locator('#detail-dialog').evaluate(dialog=>dialog.open)));
@@ -114,6 +146,6 @@ const server=http.createServer((req,res)=>{
  await page.locator('#account-action').click();await page.locator('#account-action').click();assert.equal(await page.locator('#tab-signup').getAttribute('href'),'/signup/provider/');await page.keyboard.press('Escape');
  await page.setViewportSize({width:390,height:900});await clickView('Organization profile');await noOverflow();await page.evaluate(()=>new Promise(resolve=>requestAnimationFrame(()=>requestAnimationFrame(resolve))));await page.screenshot({path:path.join(artifacts,'mobile-profile.png'),fullPage:true});
  assert.deepEqual(errors,[]);assert(logouts>=2,'Provider signout must revoke the local session');
- console.log('PASS: responsive preview, login, account isolation, editable profile/clear/error retention, approval filters/details, submission review status and Detroit timezone, recoverable refresh, session renewal, pagination, atomic onboarding, dedicated signup entry link. Fixtures only; no live writes.');
+ console.log('PASS: responsive preview, login, account isolation, editable profile/clear/error retention, approval filters/details, submission review status and Detroit timezone, recoverable refresh, session renewal, pagination, atomic onboarding, dedicated signup entry link. Issue form retry/draft retention, private history, response, linked opportunity and escaped text also passed. Fixtures only; no live writes.');
  await browser.close();await new Promise(resolve=>server.close(resolve));
 })().catch(error=>{console.error(error);server.close();process.exit(1);});

@@ -11,6 +11,8 @@ const sample = [
 ];
 const sampleOrganization = { name: "Detroit Community Partners", organization_type: "community_provider", description: "Sample organization connecting Detroit youth with local programs.", website: "https://example.org", contact_name: "Sample contact", contact_email: "hello@example.org", contact_phone: "", service_area: "Detroit", address: "", city: "Detroit", verification_status: "pending" };
 const state = { session: null, user: null, org: null, opportunities: sample, preview: true, filter: "all", view: "overview", busy: 0, loading: false, epoch: 0, profileDirty: false, confirmationEmail: null };
+let supportRequestID = crypto.randomUUID();
+let reportsVersion = 0;
 let detailID = null;
 let updateRequestID = crypto.randomUUID();
 let rosterVersion = 0;
@@ -25,6 +27,7 @@ function showFormError(selector, message) { const element = $(selector); element
 function updateActions() {
   $("#account-action").textContent = state.session ? "Sign out" : "Sign in";
   $("#account-action").disabled = state.busy > 0 || state.loading;
+  $("#report-issue").disabled = state.busy > 0 || state.loading;
   $("#refresh-workspace").hidden = !state.session;
   $("#refresh-workspace").disabled = state.busy > 0 || state.loading;
   $("#retry-workspace").disabled = state.loading;
@@ -198,6 +201,7 @@ async function signOut() {
   const session = state.session; state.epoch++;
   saveSession(null); state.user = null; state.org = null; state.preview = true; state.opportunities = sample; state.profileDirty = false;
   $("#workspace-error").hidden = true; $("#opportunity-form").reset(); $("#opportunity-form").elements.registration_url.disabled=false; closeDialog("auth-dialog"); closeDialog("opportunity-dialog"); closeDialog("detail-dialog");
+  closeDialog("support-dialog"); $("#support-form").reset(); $("#support-reports").replaceChildren(); reportsVersion++; supportRequestID = crypto.randomUUID();
   render(); showNotice("You’ve signed out.");
   if (session) { try { await Opportunity313Auth.request("/auth/v1/logout?scope=local",{method:"POST",session}); } catch { /* Local session is cleared regardless. */ } }
 }
@@ -331,4 +335,39 @@ $("#update-form").addEventListener("input", () => { updateRequestID = crypto.ran
 $("#opportunity-form").elements.in_app.addEventListener("change", event => {
   const link = $("#opportunity-form").elements.registration_url;
   link.disabled = event.target.checked;
+});
+
+async function loadIssueReports() {
+  if (!state.user || state.preview) return;
+  const epoch = state.epoch, version = ++reportsVersion;
+  $("#reports-status").textContent = "Loading reports…";
+  try {
+    const reports = await request(`/rest/v1/issue_reports?select=*&reporter_id=eq.${encodeURIComponent(state.user.id)}&order=created_at.desc&limit=200`);
+    if(epoch !== state.epoch || version !== reportsVersion) return;
+    $("#reports-status").textContent = reports.length ? (reports.length === 200 ? "Showing your latest 200 reports." : "") : "You haven’t submitted any reports yet.";
+    $("#support-reports").innerHTML = reports.map(r => `<article><h4>${escapeHTML(r.title)}</h4><p>ISS-${escapeHTML(r.id.slice(0,8).toUpperCase())} · ${escapeHTML(titleCase(r.status))} · ${escapeHTML(dateLabel(r.created_at,true))}</p>${r.opportunity_name ? `<p>${escapeHTML(r.opportunity_name)}</p>` : ""}<p class="report-text">${escapeHTML(r.details)}</p>${r.response ? `<strong>Response from Opportunity313</strong><p class="report-text">${escapeHTML(r.response)}</p>` : ""}</article>`).join("");
+  } catch(error) { if(epoch === state.epoch && version === reportsVersion) $("#reports-status").textContent = error.message; }
+}
+$("#report-issue").addEventListener("click", () => {
+  if(state.preview || !state.user) { $("#auth-dialog").showModal(); return; }
+  const previousOpportunity = $("#support-opportunity").value;
+  $("#support-opportunity").innerHTML = '<option value="">General issue</option>' + state.opportunities.map(o => `<option value="${escapeHTML(o.id)}">${escapeHTML(o.title)}</option>`).join("");
+  if(state.opportunities.some(o => o.id === previousOpportunity)) $("#support-opportunity").value = previousOpportunity;
+  $("#support-dialog").showModal(); loadIssueReports();
+});
+$("#refresh-reports").addEventListener("click",loadIssueReports);
+$("#support-form").addEventListener("input", () => { supportRequestID = crypto.randomUUID(); $("#support-status").textContent = ""; });
+$("#support-form").addEventListener("submit",async event => {
+  event.preventDefault(); const form=event.currentTarget;
+  if(state.busy || state.preview || !state.user) return;
+  const fields=new FormData(form),title=String(fields.get("title")).trim(),details=String(fields.get("details")).trim();
+  showFormError("#support-error","");
+  if(title.length<3 || title.length>120 || details.length<10 || details.length>4000) { showFormError("#support-error","Enter a title of 3–120 characters and a description of 10–4,000 characters."); return; }
+  setBusy(form,true);
+  try {
+    const report=await request("/rest/v1/rpc/native_submit_issue_report",{method:"POST",body:{request_id_input:supportRequestID,category_input:fields.get("category"),title_input:title,details_input:details,platform_input:"web",opportunity_id_input:fields.get("opportunity_id")||null,app_version_input:null}});
+    $("#support-status").textContent = `Report submitted: ISS-${report.id.slice(0,8).toUpperCase()}. Check My reports for the team’s response.`;
+    form.reset(); supportRequestID=crypto.randomUUID(); await loadIssueReports();
+  } catch(error) { showFormError("#support-error",error.message); }
+  finally { setBusy(form,false); }
 });
