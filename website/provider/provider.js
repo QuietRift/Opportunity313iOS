@@ -134,9 +134,9 @@ function render() {
   const verification = state.preview ? "pending" : state.org?.verification_status;
   const verified = verification === "verified";
   $("#org-status-title").textContent = verified ? "Organization verified" : verification === "rejected" ? "Verification needs attention" : "Verification in progress";
-  $("#org-status-copy").textContent = verified ? "Your organization has been verified. Opportunity publication still follows the current backend review rules." : "New organizations can share opportunities while verification is pending. Their submissions go through a quick Admin review.";
+  $("#org-status-copy").textContent = verified ? "Your organization is verified. The Opportunity313 team reviews submitted opportunities before publication." : "New organizations can share opportunities while verification is pending. The Opportunity313 team reviews their submissions before publication.";
   $("#verification-headline").textContent = verified ? "Your organization is verified" : "Your organization’s status";
-  $("#verification-description").textContent = verified ? "Your organization has completed the current verification process." : "Verification is pending. You can still submit opportunities for Admin review.";
+  $("#verification-description").textContent = verified ? "Your organization’s verification is complete." : "Verification is pending. You can still submit opportunities for review by the Opportunity313 team.";
   $("#recent-list").innerHTML = opportunities.length ? opportunities.slice(0, 3).map((item) => `<article class="recent-item"><span class="recent-icon">${escapeHTML(item.category?.charAt(0) || "O")}</span><div><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.category)} · ${dateLabel(item.created_at)}</small></div><span class="pill ${escapeHTML(item.status)}">${statusLabel(item.status)}</span></article>`).join("") : '<div class="empty-inline">No opportunities yet. Create your first one to get started.</div>';
   renderOpportunities();
 }
