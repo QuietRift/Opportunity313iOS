@@ -133,3 +133,9 @@ App Store listing. The privacy policy should specifically describe
 parent-managed child profiles, access codes, consent, data retention, account
 deletion, and the providers that process app data. Do not ship placeholder
 legal acceptance language as though it were final legal advice.
+
+## October youth program additions
+
+`scripts/import_apple_code_create_and_gdyt.sql` adds Saturdays in the D / Apple
+Code + Create and Grow Detroit's Young Talent. GDYT stays visible as a closed
+informational resource. See [source verification and integration notes](docs/resources/youth_programs_2026-10-12.md).

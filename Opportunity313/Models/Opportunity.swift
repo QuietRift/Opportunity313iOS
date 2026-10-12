@@ -104,7 +104,18 @@ struct Opportunity: Codable, Identifiable, Hashable {
 }
 
 extension Opportunity {
+    var isRegistrationClosed: Bool {
+        registrationMethod.trimmingCharacters(in: .whitespacesAndNewlines)
+            .lowercased() == "registration_closed"
+    }
+
+    var registrationActionTitle: String {
+        isRegistrationClosed ? "View Program" : "View Registration"
+    }
+
     var registrationMethodDisplayText: String? {
+        if isRegistrationClosed { return "Registration closed" }
+
         let trimmed = registrationMethod.trimmingCharacters(in: .whitespacesAndNewlines)
         let normalized = trimmed
             .lowercased()
@@ -135,11 +146,13 @@ extension Opportunity {
     }
 
     var startDisplayText: String {
-        startsAt?.formatted(date: .abbreviated, time: .shortened) ?? "Ongoing"
+        if isRegistrationClosed { return "Registration closed" }
+        return startsAt?.formatted(date: .abbreviated, time: .shortened) ?? "Ongoing"
     }
 
     var startDateDisplayText: String {
-        startsAt?.formatted(date: .abbreviated, time: .omitted) ?? "Ongoing"
+        if isRegistrationClosed { return "Registration closed" }
+        return startsAt?.formatted(date: .abbreviated, time: .omitted) ?? "Ongoing"
     }
 }
 

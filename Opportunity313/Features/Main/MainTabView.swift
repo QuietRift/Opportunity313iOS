@@ -157,7 +157,7 @@ struct ParentTabView: View {
 
         TabView(selection: $selectedTab) {
 
-            ParentHomeView(onChildren: { selectedTab = 2 }, onSaved: { deadlinesOnly = false; selectedTab = 3 }, onDeadlines: { deadlinesOnly = true; selectedTab = 3 })
+            ParentHomeView(onDiscover: { recommendedOnly = false; selectedTab = 1 }, onChildren: { selectedTab = 2 }, onSaved: { deadlinesOnly = false; selectedTab = 3 }, onDeadlines: { deadlinesOnly = true; selectedTab = 3 })
                 .tag(0)
                 .tabItem {
 

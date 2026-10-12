@@ -11,6 +11,7 @@ struct ParentHomeView: View {
 
     @Environment(\.colorScheme) private var colorScheme
 
+    var onDiscover: () -> Void = {}
     var onChildren: () -> Void = {}
     var onSaved: () -> Void = {}
     var onDeadlines: () -> Void = {}
@@ -27,6 +28,16 @@ struct ParentHomeView: View {
                 ) {
 
                     dashboardHeader
+
+                    Button(action: onDiscover) {
+                        ParentDashboardCard(
+                            title: "Discover Opportunities",
+                            description: "Explore programs and resources for your family.",
+                            icon: "magnifyingglass"
+                        )
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityIdentifier("parentDiscoverShortcut")
 
                     Button(action: onChildren) {
                         ParentDashboardCard(

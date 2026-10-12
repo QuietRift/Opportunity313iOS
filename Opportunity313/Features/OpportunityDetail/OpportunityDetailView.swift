@@ -366,7 +366,7 @@ struct OpportunityDetailView: View {
                                 Spacer()
 
                                 Text(
-                                    "View Registration"
+                                    opportunity.registrationActionTitle
                                 )
                                 .fontWeight(
                                     .semibold
